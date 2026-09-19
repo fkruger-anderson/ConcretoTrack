@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Chave restrita ao pacote br.com.anderson.meuprimeiroprojeto.gerencial (Maps SDK for Android).
+         Fica num arquivo separado pra ser fácil de excluir do controle de versão depois, se quiser. -->
+    <string name="google_maps_key" translatable="false">AIzaSyBvlgG0BmqOMxptONH55cfevIr-PTFWJ6M</string>
+</resources>

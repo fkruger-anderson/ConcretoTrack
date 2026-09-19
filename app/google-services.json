@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "215065309005",
+    "project_id": "entregas-concreto",
+    "storage_bucket": "entregas-concreto.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:215065309005:android:d289a52391e45b7ebb9104",
+        "android_client_info": {
+          "package_name": "br.com.anderson.meuprimeiroprojeto"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAc95LQ4CyCrYt22WVlXoIi12uQu-x40vk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:215065309005:android:33cdf5ac70e428e1bb9104",
+        "android_client_info": {
+          "package_name": "br.com.anderson.meuprimeiroprojeto.gerencial"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAc95LQ4CyCrYt22WVlXoIi12uQu-x40vk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

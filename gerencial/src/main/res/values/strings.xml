@@ -1,0 +1,128 @@
+<resources>
+    <string name="app_name">Gerencial Concreto</string>
+
+    <string name="login_titulo">Login do gerente</string>
+    <string name="login_hint_email">Email</string>
+    <string name="login_hint_senha">Senha</string>
+    <string name="login_botao_entrar">Entrar</string>
+    <string name="login_link_cadastro">Não tem conta? Cadastre-se</string>
+    <string name="login_erro_campos_vazios">Preencha email e senha</string>
+    <string name="login_erro_credenciais">Email ou senha incorretos</string>
+    <string name="login_erro_generico">Não foi possível entrar. Verifique sua conexão e tente de novo</string>
+
+    <string name="cadastro_titulo">Cadastro do gerente</string>
+    <string name="cadastro_hint_nome">Nome</string>
+    <string name="cadastro_hint_email">Email</string>
+    <string name="cadastro_hint_senha">Senha (mínimo 6 caracteres)</string>
+    <string name="cadastro_botao_criar">Criar conta</string>
+    <string name="cadastro_erro_nome">Informe o nome</string>
+    <string name="cadastro_erro_email">Informe um email válido</string>
+    <string name="cadastro_erro_senha">A senha precisa ter pelo menos 6 caracteres</string>
+    <string name="cadastro_erro_email_em_uso">Já existe uma conta com esse email</string>
+    <string name="cadastro_erro_generico">Não foi possível criar a conta. Verifique sua conexão e tente de novo</string>
+
+    <string name="home_boas_vindas">Bem-vindo, %1$s</string>
+    <string name="home_sair">Sair</string>
+    <string name="home_botao_novo_pedido">Cadastrar novo pedido</string>
+    <string name="home_botao_mapa">Ver caminhões no mapa</string>
+    <string name="home_botao_cadastrar_motorista">Cadastrar motorista</string>
+
+    <string name="cadastro_motorista_titulo">Novo motorista</string>
+    <string name="cadastro_motorista_hint_nome">Nome</string>
+    <string name="cadastro_motorista_hint_cpf">CPF (somente números)</string>
+    <string name="cadastro_motorista_hint_email">Email de login</string>
+    <string name="cadastro_motorista_hint_senha">Senha (mínimo 6 caracteres)</string>
+    <string name="cadastro_motorista_botao">Cadastrar motorista</string>
+    <string name="cadastro_motorista_erro_nome">Informe o nome</string>
+    <string name="cadastro_motorista_erro_cpf">CPF inválido</string>
+    <string name="cadastro_motorista_erro_email">Informe um email válido</string>
+    <string name="cadastro_motorista_erro_senha">A senha precisa ter pelo menos 6 caracteres</string>
+    <string name="cadastro_motorista_erro_email_em_uso">Já existe uma conta com esse email</string>
+    <string name="cadastro_motorista_erro_generico">Não foi possível cadastrar. Verifique sua conexão e tente de novo</string>
+    <string name="cadastro_motorista_sucesso">Motorista cadastrado</string>
+
+    <string name="home_botao_cadastrar_caminhao">Cadastrar caminhão</string>
+
+    <string name="cadastro_caminhao_titulo">Novo caminhão</string>
+    <string name="cadastro_caminhao_hint_placa">Placa</string>
+    <string name="cadastro_caminhao_hint_marca">Marca</string>
+    <string name="cadastro_caminhao_hint_modelo">Modelo</string>
+    <string name="cadastro_caminhao_hint_ano">Ano</string>
+    <string name="cadastro_caminhao_botao">Cadastrar caminhão</string>
+    <string name="cadastro_caminhao_erro_placa">Placa inválida (ex.: ABC1D23 ou ABC1234)</string>
+    <string name="cadastro_caminhao_erro_marca_modelo">Preencha marca e modelo</string>
+    <string name="cadastro_caminhao_erro_ano">Informe um ano válido</string>
+    <string name="cadastro_caminhao_erro_placa_duplicada">Já existe um caminhão com essa placa</string>
+    <string name="cadastro_caminhao_erro_generico">Não foi possível cadastrar. Verifique sua conexão e tente de novo</string>
+    <string name="cadastro_caminhao_sucesso">Caminhão cadastrado</string>
+
+    <string name="home_botao_atribuir_viagem">Atribuir viagem</string>
+
+    <string name="atribuir_titulo">Atribuir viagem</string>
+    <string name="atribuir_label_pedido">Pedido</string>
+    <string name="atribuir_label_motorista">Motorista</string>
+    <string name="atribuir_label_caminhao">Caminhão</string>
+    <string name="atribuir_hint_m3">Quantidade desta viagem (m³)</string>
+    <string name="atribuir_botao">Atribuir</string>
+    <string name="atribuir_erro_m3">Informe uma quantidade maior que zero</string>
+    <string name="atribuir_erro_saldo">Valor maior que o saldo disponível do pedido</string>
+    <string name="atribuir_erro_conexao">Sem conexão para validar o saldo. Tente de novo</string>
+    <string name="atribuir_erro_generico">Não foi possível atribuir a viagem. Tente de novo</string>
+    <string name="atribuir_sucesso">Viagem atribuída</string>
+    <string name="atribuir_sem_dados">Cadastre pelo menos um pedido com saldo, um motorista e um caminhão antes de atribuir uma viagem</string>
+    <string name="home_lista_vazia">Nenhum pedido cadastrado ainda</string>
+    <string name="home_erro_carregar">Não foi possível carregar os pedidos. Verifique sua conexão</string>
+    <string name="home_item_numero_formato">Pedido nº %1$d — %2$s</string>
+    <string name="home_progresso_formato">%1$s de %2$s m³ alocados (restam %3$s)</string>
+    <string name="status_pendente">Pendente</string>
+    <string name="status_em_andamento">Em andamento</string>
+    <string name="status_concluido">Concluído</string>
+
+    <string name="novo_pedido_titulo">Novo pedido</string>
+    <string name="novo_pedido_hint_documento">CPF ou CNPJ (somente números)</string>
+    <string name="novo_pedido_hint_nome">Nome do destinatário</string>
+    <string name="novo_pedido_hint_cep">CEP</string>
+    <string name="novo_pedido_botao_buscar_cep">Buscar</string>
+    <string name="novo_pedido_hint_rua">Rua</string>
+    <string name="novo_pedido_hint_numero">Número</string>
+    <string name="novo_pedido_hint_bairro">Bairro</string>
+    <string name="novo_pedido_hint_cidade">Cidade</string>
+    <string name="novo_pedido_hint_uf">UF</string>
+    <string name="novo_pedido_hint_m3">Quantidade total (m³)</string>
+    <string name="novo_pedido_botao_salvar">Salvar pedido</string>
+    <string name="novo_pedido_erro_documento">CPF ou CNPJ inválido</string>
+    <string name="novo_pedido_erro_nome">Informe o nome do destinatário</string>
+    <string name="novo_pedido_erro_cep">CEP não encontrado</string>
+    <string name="novo_pedido_erro_endereco">Preencha o endereço completo</string>
+    <string name="novo_pedido_erro_m3">Informe uma quantidade maior que zero</string>
+    <string name="novo_pedido_erro_salvar">Não foi possível salvar o pedido. Verifique sua conexão</string>
+    <string name="novo_pedido_sucesso">Pedido nº %1$d cadastrado</string>
+    <string name="novo_pedido_buscando_cep">Buscando CEP…</string>
+
+    <string name="mapa_titulo">Caminhões em tempo real</string>
+    <string name="mapa_nenhum_caminhao">Nenhum caminhão em rota agora</string>
+    <string name="mapa_marcador_formato">%1$s — placa %2$s</string>
+
+    <string name="historico_item_numero_formato">Pedido nº %1$d — %2$s</string>
+    <string name="historico_progresso_formato">%1$s de %2$s m³ alocados (restam %3$s)</string>
+    <string name="historico_lista_vazia">Nenhuma viagem para este pedido ainda</string>
+    <string name="historico_erro_carregar">Não foi possível carregar o histórico. Verifique sua conexão</string>
+    <string name="cancelar_viagem_titulo">Cancelar viagem</string>
+    <string name="cancelar_viagem_hint_motivo">Motivo do cancelamento</string>
+    <string name="cancelar_viagem_confirmar">Confirmar</string>
+    <string name="cancelar_viagem_voltar">Voltar</string>
+    <string name="cancelar_viagem_erro_motivo_vazio">Informe o motivo do cancelamento</string>
+    <string name="cancelar_viagem_erro_estado">Essa viagem não pode mais ser cancelada (já foi concluída ou cancelada)</string>
+    <string name="cancelar_viagem_erro_generico">Não foi possível cancelar a viagem. Verifique sua conexão e tente de novo</string>
+    <string name="cancelar_viagem_sucesso">Viagem cancelada</string>
+    <string name="viagem_motorista_formato">%1$s — placa %2$s</string>
+    <string name="viagem_detalhes_formato">%1$s m³ · início %2$s%3$s</string>
+    <string name="viagem_detalhes_atribuida_formato">%1$s m³ · atribuída em %2$s</string>
+    <string name="viagem_detalhes_cancelada_formato">%1$s m³ · motivo: %2$s</string>
+    <string name="viagem_botao_cancelar">Cancelar viagem</string>
+    <string name="viagem_fim_formato"> · fim %1$s</string>
+    <string name="viagem_status_atribuida">Atribuída (motorista ainda não iniciou)</string>
+    <string name="viagem_status_em_rota">Em rota</string>
+    <string name="viagem_status_concluida">Concluída</string>
+    <string name="viagem_status_cancelada">Cancelada</string>
+</resources>
