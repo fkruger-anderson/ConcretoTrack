@@ -5,17 +5,24 @@ import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusPedido
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 
+/** Cadastro e consulta de pedidos, e cálculo do status (pendente/em andamento/concluído) a partir das viagens. */
 object PedidoRepositorio {
 
     private val db get() = Firebase.firestore
 
+    /**
+     * Lista todos os pedidos já com o status calculado (não gravado — ver [StatusPedido]),
+     * ordenados pela data de entrega (mais antiga primeiro), para o gerente priorizar as
+     * entregas mais urgentes. Quando o saldo está zerado, ainda é preciso checar se há viagem
+     * atribuída/em rota pendente para decidir entre "em andamento" e "concluído".
+     */
     suspend fun listarComStatus(): List<PedidoComStatus> {
         val snapshot = db.collection("pedidos").get().aguardar()
         val pedidos = snapshot.documents.mapNotNull { documento ->
             val id = documento.id.toIntOrNull() ?: return@mapNotNull null
             val remoto = documento.toObject(PedidoRemoto::class.java) ?: return@mapNotNull null
             id to remoto
-        }.sortedBy { it.first }
+        }.sortedBy { it.second.dataEntrega }
 
         return pedidos.map { (id, remoto) ->
             val saldo = remoto.quantidadeTotalM3 - remoto.m3Alocados
@@ -25,10 +32,13 @@ object PedidoRepositorio {
                 temViagemPendente(id) -> StatusPedido.EM_ANDAMENTO
                 else -> StatusPedido.CONCLUIDO
             }
-            PedidoComStatus(id, remoto.destinatarioNome, remoto.quantidadeTotalM3, remoto.m3Alocados, status)
+            PedidoComStatus(
+                id, remoto.destinatarioNome, remoto.quantidadeTotalM3, remoto.m3Alocados, status, remoto.dataEntrega
+            )
         }
     }
 
+    /** Busca um pedido específico pelo número (id), usado na tela de atribuir viagem. */
     suspend fun buscarPorId(id: Int): PedidoRemoto? {
         val documento = db.collection("pedidos").document(id.toString()).get().aguardar()
         return documento.toObject(PedidoRemoto::class.java)
@@ -60,7 +70,8 @@ object PedidoRepositorio {
         cidade: String,
         uf: String,
         cep: String,
-        quantidadeTotalM3: Double
+        quantidadeTotalM3: Double,
+        dataEntrega: Long
     ): Int {
         val contadorRef = db.collection("contadores").document("pedidos")
 
@@ -83,7 +94,8 @@ object PedidoRepositorio {
                     uf = uf,
                     cep = cep,
                     quantidadeTotalM3 = quantidadeTotalM3,
-                    m3Alocados = 0.0
+                    m3Alocados = 0.0,
+                    dataEntrega = dataEntrega
                 )
             )
             proximo

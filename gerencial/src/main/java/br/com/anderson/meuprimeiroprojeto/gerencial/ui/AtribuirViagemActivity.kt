@@ -9,28 +9,28 @@ import android.widget.ProgressBar
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import br.com.anderson.meuprimeiroprojeto.gerencial.R
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.MotoristaComId
-import br.com.anderson.meuprimeiroprojeto.gerencial.backend.MotoristaRepositorio
-import br.com.anderson.meuprimeiroprojeto.gerencial.backend.PedidoRepositorio
-import br.com.anderson.meuprimeiroprojeto.gerencial.backend.ViagemRepositorio
-import br.com.anderson.meuprimeiroprojeto.gerencial.backend.CaminhaoRepositorio
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.Caminhao
-import br.com.anderson.meuprimeiroprojeto.gerencial.dados.PedidoComStatus
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
+import br.com.anderson.meuprimeiroprojeto.gerencial.formatarM3
+import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.AtribuirErro
+import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.AtribuirViagemUiState
+import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.AtribuirViagemViewModel
 
-/** O gerente escolhe pedido + motorista + caminhão + quantidade; a viagem nasce "atribuída". */
+/** O gerente já chega aqui com o pedido escolhido; só falta motorista, caminhão e quantidade. */
 class AtribuirViagemActivity : AppCompatActivity() {
 
     companion object {
-        private const val TEMPO_LIMITE_MS = 10_000L
+        /** Chave do Intent extra: id do pedido que está recebendo a nova viagem. */
+        const val EXTRA_PEDIDO_ID = "pedido_id"
     }
 
-    private lateinit var spinnerPedido: Spinner
+    private val viewModel: AtribuirViagemViewModel by viewModels()
+
+    private var pedidoId: Int = -1
+    private lateinit var textPedido: TextView
     private lateinit var spinnerMotorista: Spinner
     private lateinit var spinnerCaminhao: Spinner
     private lateinit var editQuantidadeM3: EditText
@@ -39,11 +39,18 @@ class AtribuirViagemActivity : AppCompatActivity() {
     private lateinit var textErro: TextView
     private lateinit var textSemDados: TextView
 
+    /** Lê o pedido recebido por Intent, liga as Views e manda a ViewModel carregar os dados. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_atribuir_viagem)
 
-        spinnerPedido = findViewById(R.id.spinnerPedido)
+        pedidoId = intent.getIntExtra(EXTRA_PEDIDO_ID, -1)
+        if (pedidoId <= 0) {
+            finish()
+            return
+        }
+
+        textPedido = findViewById(R.id.textPedido)
         spinnerMotorista = findViewById(R.id.spinnerMotorista)
         spinnerCaminhao = findViewById(R.id.spinnerCaminhao)
         editQuantidadeM3 = findViewById(R.id.editQuantidadeM3)
@@ -54,87 +61,54 @@ class AtribuirViagemActivity : AppCompatActivity() {
 
         botaoAtribuir.setOnClickListener { tentarAtribuir() }
 
-        carregarListas()
+        viewModel.estado.observe(this) { estado -> exibirEstado(estado) }
+        viewModel.carregar(pedidoId)
     }
 
-    private fun carregarListas() {
-        lifecycleScope.launch {
-            val pedidos = try {
-                PedidoRepositorio.listarComStatus().filter { it.saldo > 0.0 }
-            } catch (erro: Exception) {
-                emptyList()
-            }
-            val motoristas = try {
-                MotoristaRepositorio.listar()
-            } catch (erro: Exception) {
-                emptyList()
-            }
-            val caminhoes = try {
-                CaminhaoRepositorio.listar()
-            } catch (erro: Exception) {
-                emptyList()
-            }
-
-            if (pedidos.isEmpty() || motoristas.isEmpty() || caminhoes.isEmpty()) {
-                textSemDados.text = getString(R.string.atribuir_sem_dados)
-                textSemDados.visibility = View.VISIBLE
-                botaoAtribuir.isEnabled = false
-                return@launch
-            }
-
-            spinnerPedido.adapter = ArrayAdapter(
-                this@AtribuirViagemActivity, android.R.layout.simple_spinner_dropdown_item, pedidos
-            )
-            spinnerMotorista.adapter = ArrayAdapter(
-                this@AtribuirViagemActivity, android.R.layout.simple_spinner_dropdown_item, motoristas
-            )
-            spinnerCaminhao.adapter = ArrayAdapter(
-                this@AtribuirViagemActivity, android.R.layout.simple_spinner_dropdown_item, caminhoes
-            )
-        }
-    }
-
-    private fun tentarAtribuir() {
-        val pedido = spinnerPedido.selectedItem as? PedidoComStatus ?: return
-        val motorista = spinnerMotorista.selectedItem as? MotoristaComId ?: return
-        val caminhao = spinnerCaminhao.selectedItem as? Caminhao ?: return
-
-        val quantidadeM3 = editQuantidadeM3.text.toString().trim().replace(',', '.').toDoubleOrNull()
-        if (quantidadeM3 == null || quantidadeM3 <= 0.0) {
-            editQuantidadeM3.error = getString(R.string.atribuir_erro_m3)
+    /** Reflete o [AtribuirViagemUiState] atual nas Views: textos, spinners, erros e sucesso. */
+    private fun exibirEstado(estado: AtribuirViagemUiState) {
+        if (estado.pedidoNaoEncontrado) {
+            finish()
             return
         }
 
-        botaoAtribuir.isEnabled = false
-        textErro.visibility = View.GONE
-        lifecycleScope.launch {
-            try {
-                withTimeout(TEMPO_LIMITE_MS) {
-                    ViagemRepositorio.atribuir(
-                        pedidoId = pedido.id,
-                        motoristaUid = motorista.uid,
-                        motoristaNome = motorista.perfil.nome,
-                        motoristaCpf = motorista.perfil.cpf,
-                        caminhaoPlaca = caminhao.placa,
-                        metrosCubicos = quantidadeM3
-                    )
-                }
-                Toast.makeText(this@AtribuirViagemActivity, R.string.atribuir_sucesso, Toast.LENGTH_LONG).show()
-                finish()
-            } catch (erro: ViagemRepositorio.SaldoInsuficienteException) {
-                mostrarErro(getString(R.string.atribuir_erro_saldo))
-            } catch (erro: TimeoutCancellationException) {
-                mostrarErro(getString(R.string.atribuir_erro_conexao))
-            } catch (erro: Exception) {
-                mostrarErro(getString(R.string.atribuir_erro_generico))
-            } finally {
-                botaoAtribuir.isEnabled = true
-            }
+        textPedido.text = getString(
+            R.string.atribuir_pedido_formato, estado.pedidoId, estado.destinatarioNome, formatarM3(estado.saldo)
+        )
+
+        if (estado.semDadosParaAtribuir) {
+            textSemDados.text = getString(R.string.atribuir_sem_dados)
+            textSemDados.visibility = View.VISIBLE
+            botaoAtribuir.isEnabled = false
+        } else {
+            textSemDados.visibility = View.GONE
+            spinnerMotorista.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, estado.motoristas)
+            spinnerCaminhao.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, estado.caminhoes)
+            botaoAtribuir.isEnabled = !estado.enviando
+        }
+
+        progresso.visibility = if (estado.enviando) View.VISIBLE else View.GONE
+        editQuantidadeM3.error = if (estado.erroQuantidade) getString(R.string.atribuir_erro_m3) else null
+
+        val mensagemErro = when (estado.erroAtribuir) {
+            AtribuirErro.SALDO_INSUFICIENTE -> getString(R.string.atribuir_erro_saldo)
+            AtribuirErro.SEM_CONEXAO -> getString(R.string.atribuir_erro_conexao)
+            AtribuirErro.GENERICO -> getString(R.string.atribuir_erro_generico)
+            null -> null
+        }
+        textErro.visibility = if (mensagemErro != null) View.VISIBLE else View.GONE
+        if (mensagemErro != null) textErro.text = mensagemErro
+
+        estado.sucesso?.getConteudoSeNaoTratado()?.let {
+            Toast.makeText(this, R.string.atribuir_sucesso, Toast.LENGTH_LONG).show()
+            finish()
         }
     }
 
-    private fun mostrarErro(mensagem: String) {
-        textErro.text = mensagem
-        textErro.visibility = View.VISIBLE
+    /** Lê motorista, caminhão e quantidade escolhidos e pede pra ViewModel tentar atribuir. */
+    private fun tentarAtribuir() {
+        val motorista = spinnerMotorista.selectedItem as? MotoristaComId ?: return
+        val caminhao = spinnerCaminhao.selectedItem as? Caminhao ?: return
+        viewModel.atribuir(pedidoId, motorista, caminhao, editQuantidadeM3.text.toString())
     }
 }

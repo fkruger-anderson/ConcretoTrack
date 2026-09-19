@@ -2,13 +2,17 @@ package br.com.anderson.meuprimeiroprojeto.gerencial.backend
 
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusViagem
 import com.google.firebase.Firebase
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.firestore
 
+/** Atribuição, cancelamento e consulta de viagens — inclusive as escritas que mexem no saldo do pedido, sempre em transação. */
 object ViagemRepositorio {
 
     private val db get() = Firebase.firestore
 
+    /** Lançada ao tentar atribuir uma viagem com m³ maior que o saldo restante do pedido. */
     class SaldoInsuficienteException : Exception("m³ maior que o saldo disponível")
+    /** Lançada ao tentar cancelar uma viagem que já está concluída ou cancelada. */
     class EstadoInvalidoException : Exception("Essa viagem não pode mais ser cancelada")
 
     /**
@@ -92,6 +96,7 @@ object ViagemRepositorio {
         }.aguardar()
     }
 
+    /** Histórico de viagens de um pedido, mais recentes primeiro — usado na tela de detalhe do pedido. */
     suspend fun listarPorPedido(pedidoId: Int): List<Pair<String, ViagemRemota>> {
         val snapshot = db.collection("viagens")
             .whereEqualTo("pedidoId", pedidoId)
@@ -103,5 +108,34 @@ object ViagemRepositorio {
                 documento.id to remota
             }
             .sortedByDescending { it.second.dataAtribuicao }
+    }
+
+    /**
+     * Escuta em tempo real as viagens em rota agora — usado pelo mapa do gerente. Quem cancela
+     * a escuta é o chamador, guardando o [ListenerRegistration] retornado e chamando `.remove()`
+     * quando não precisar mais.
+     */
+    fun escutarViagensEmRota(aoAtualizar: (List<Pair<String, ViagemRemota>>) -> Unit): ListenerRegistration {
+        return db.collection("viagens")
+            .whereEqualTo("status", StatusViagem.EM_ROTA.name)
+            .addSnapshotListener { snapshot, erro ->
+                if (erro != null || snapshot == null) return@addSnapshotListener
+                val viagens = snapshot.documents.mapNotNull { documento ->
+                    val viagem = documento.toObject(ViagemRemota::class.java) ?: return@mapNotNull null
+                    documento.id to viagem
+                }
+                aoAtualizar(viagens)
+            }
+    }
+
+    /** Pontos de GPS gravados durante a viagem, em ordem, pra desenhar a rota no mapa. */
+    suspend fun listarPontosGps(viagemId: String): List<PontoGpsRemoto> {
+        val snapshot = db.collection("viagens").document(viagemId)
+            .collection("pontosGps")
+            .get()
+            .aguardar()
+        return snapshot.documents
+            .mapNotNull { it.toObject(PontoGpsRemoto::class.java) }
+            .sortedBy { it.horario }
     }
 }

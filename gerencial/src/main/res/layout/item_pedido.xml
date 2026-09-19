@@ -32,4 +32,11 @@
         android:textStyle="italic"
         tools:text="6 de 20 m³ alocados (restam 14)" />
 
+    <TextView
+        android:id="@+id/textDataEntrega"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        tools:text="Entrega: 15/03/2026" />
+
 </LinearLayout>

@@ -13,6 +13,7 @@ object PedidoRepositorio {
 
     private val db get() = Firebase.firestore
 
+    /** Busca um pedido pelo id (número sequencial usado como id do documento no Firestore). */
     suspend fun buscarPorId(id: Int): Pedido? {
         val documento = db.collection("pedidos").document(id.toString()).get().aguardar()
         val remoto = documento.toObject(PedidoRemoto::class.java) ?: return null

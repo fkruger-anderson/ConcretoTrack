@@ -15,5 +15,6 @@ data class PedidoRemoto(
     val uf: String = "",
     val cep: String = "",
     val quantidadeTotalM3: Double = 0.0,
-    val m3Alocados: Double = 0.0
+    val m3Alocados: Double = 0.0,
+    val dataEntrega: Long = 0
 )

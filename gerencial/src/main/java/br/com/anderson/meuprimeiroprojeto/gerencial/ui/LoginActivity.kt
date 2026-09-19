@@ -7,15 +7,17 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import br.com.anderson.meuprimeiroprojeto.gerencial.R
-import br.com.anderson.meuprimeiroprojeto.gerencial.backend.AutenticacaoRepositorio
-import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
-import com.google.firebase.auth.FirebaseAuthInvalidUserException
-import kotlinx.coroutines.launch
+import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.LoginErro
+import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.LoginUiState
+import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.LoginViewModel
 
+/** Tela de login do gerente; se já tem sessão salva no Firebase Auth, pula direto pra Home. */
 class LoginActivity : AppCompatActivity() {
+
+    private val viewModel: LoginViewModel by viewModels()
 
     private lateinit var editEmail: EditText
     private lateinit var editSenha: EditText
@@ -23,10 +25,14 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var progresso: ProgressBar
     private lateinit var textErro: TextView
 
+    /**
+     * Antes de montar a tela, verifica se já existe sessão ativa — se sim, vai direto pra Home
+     * sem nem inflar o layout de login.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (AutenticacaoRepositorio.usuarioAtual != null) {
+        if (viewModel.jaEstaLogado()) {
             abrirHome()
             return
         }
@@ -39,49 +45,34 @@ class LoginActivity : AppCompatActivity() {
         progresso = findViewById(R.id.progresso)
         textErro = findViewById(R.id.textErro)
 
-        botaoEntrar.setOnClickListener { tentarEntrar() }
+        botaoEntrar.setOnClickListener {
+            viewModel.entrar(editEmail.text.toString().trim(), editSenha.text.toString())
+        }
         findViewById<TextView>(R.id.botaoIrParaCadastro).setOnClickListener {
             startActivity(Intent(this, CadastroActivity::class.java))
         }
+
+        viewModel.estado.observe(this) { estado -> exibirEstado(estado) }
     }
 
-    private fun tentarEntrar() {
-        val email = editEmail.text.toString().trim()
-        val senha = editSenha.text.toString()
+    /** Atualiza progresso e mensagem de erro, e abre a Home quando o login dá certo. */
+    private fun exibirEstado(estado: LoginUiState) {
+        progresso.visibility = if (estado.carregando) View.VISIBLE else View.GONE
+        botaoEntrar.isEnabled = !estado.carregando
 
-        if (email.isEmpty() || senha.isEmpty()) {
-            mostrarErro(getString(R.string.login_erro_campos_vazios))
-            return
+        val mensagemErro = when (estado.erro) {
+            LoginErro.CAMPOS_VAZIOS -> getString(R.string.login_erro_campos_vazios)
+            LoginErro.CREDENCIAIS_INVALIDAS -> getString(R.string.login_erro_credenciais)
+            LoginErro.GENERICO -> getString(R.string.login_erro_generico)
+            null -> null
         }
+        textErro.visibility = if (mensagemErro != null) View.VISIBLE else View.GONE
+        if (mensagemErro != null) textErro.text = mensagemErro
 
-        mostrarCarregando(true)
-        lifecycleScope.launch {
-            try {
-                AutenticacaoRepositorio.entrar(email, senha)
-                abrirHome()
-            } catch (erro: FirebaseAuthInvalidUserException) {
-                mostrarErro(getString(R.string.login_erro_credenciais))
-            } catch (erro: FirebaseAuthInvalidCredentialsException) {
-                mostrarErro(getString(R.string.login_erro_credenciais))
-            } catch (erro: Exception) {
-                mostrarErro(getString(R.string.login_erro_generico))
-            } finally {
-                mostrarCarregando(false)
-            }
-        }
+        estado.sucesso?.getConteudoSeNaoTratado()?.let { abrirHome() }
     }
 
-    private fun mostrarCarregando(carregando: Boolean) {
-        progresso.visibility = if (carregando) View.VISIBLE else View.GONE
-        botaoEntrar.isEnabled = !carregando
-        if (carregando) textErro.visibility = View.GONE
-    }
-
-    private fun mostrarErro(mensagem: String) {
-        textErro.text = mensagem
-        textErro.visibility = View.VISIBLE
-    }
-
+    /** Abre a MainActivity e encerra a tela de login (não deve voltar pra ela com o botão "voltar"). */
     private fun abrirHome() {
         startActivity(Intent(this, MainActivity::class.java))
         finish()

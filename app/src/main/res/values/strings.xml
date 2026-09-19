@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">MeuPrimeiroProjeto</string>
+    <string name="app_name">Motorista - Concreto</string>
 
     <string name="login_titulo">Login do motorista</string>
     <string name="login_hint_email">Email</string>

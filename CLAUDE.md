@@ -10,7 +10,7 @@ português o que você escrever e por quê. Interface simples, sem enfeites.
 1. **App do motorista** (prioridade): vê as viagens atribuídas a ele, escolhe uma e inicia o
 trânsito (rastreamento GPS), finalizando ao chegar no destino.
 2. **App gerencial**: cadastra pedidos, motoristas e caminhões; atribui viagens (pedido + motorista
-+ caminhão + quantidade); vê os caminhões em tempo real no mapa e o histórico de pedidos e viagens.
+* caminhão + quantidade); vê os caminhões em tempo real no mapa e o histórico de pedidos e viagens.
 Pode virar painel web depois (decisão em aberto).
 
 O gerente decide quem leva o quê — o motorista só executa. Isso mudou no meio do projeto (as
@@ -123,4 +123,36 @@ migrando pra esse momento), e o app do motorista passa a só listar e iniciar vi
 * Linguagem: Kotlin (padrão, alinhada às aulas).
 * Backend: Firebase (Auth + Firestore). Sem Storage — não há fotos no projeto.
 * App gerencial: app Android, módulo `:gerencial` no mesmo projeto Gradle.
+
+## Padrões da Disciplina
+
+
+
+Tema	O que os slides ensinam	Como conferir no projeto
+
+Arquitetura	Activity/Fragment → ViewModel (LiveData) → Repository → Room/Retrofit	Activities e Fragments não chamam Room ou Firestore direto. ViewModel não importa Context, Activity nem View
+
+Recursos	Textos em strings.xml via @string/..., temas em values, imagens em drawable/mipmap	Nenhum android:text com texto fixo nos layouts
+
+Manifest	Declara Activities, Services e permissões	AndroidManifest.xml tem todas as telas, o RastreamentoService e as permissões de câmera e localização
+
+Layouts e IDs	XML com padding, margin, gravity, weight. Os exemplos nomeiam IDs pelo tipo: textNome, buttonEnviar, checkReceberEmail	IDs seguem esse padrão e os layouts têm um arquivo por tela
+
+Navegação	Intent para abrir outra tela, parâmetros por extras, finish() para fechar	Sem navegação feita de outro jeito
+
+Ciclo de vida	Recursos criados em onCreate são liberados em onDestroy. onResume e onPause devem ser leves. Estado salvo em Bundle (onSaveInstanceState)	Girar a tela não perde os dados digitados. Nada pesado nos métodos de pausa
+
+Log e diálogos	Log.d/i/w/e com categoria (tag), AlertDialog.Builder para confirmações	Sem println nem printStackTrace. Cancelar viagem usa AlertDialog
+
+Fragments	Módulo reutilizável. onCreateView cria a view e onDestroyView libera recursos	Cada fragment funciona independente da Activity que o abriu
+
+Listas	RecyclerView com LayoutManager, Adapter e ViewHolder, com o item em layout próprio	Não há ListView nem BaseAdapter
+
+Service	Deve ser parado quando não é mais necessário (stopService/stopSelf) e usar startForeground() para rastrear	Existe um caminho que para o serviço ao finalizar ou cancelar a viagem, com notificação fixa
+
+SharedPreferences	Só tipos primitivos, chaves como constantes, para configurações simples	Guarda login e viagem atual. Pedidos e viagens ficam no banco
+
+SQLite	O acesso ao banco deve ficar fora da thread principal	Room sem allowMainThreadQueries()
+
+
 

@@ -14,11 +14,18 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * Adapter da lista de viagens de um pedido (histórico). Recebe a lista já pronta da ViewModel e
+ * dois callbacks (cancelar e ver rota) — a decisão de habilitar cada ação é feita aqui, olhando
+ * o status/dataInicio de cada viagem, mas quem executa a ação é sempre a ViewModel/Activity.
+ */
 class ViagemAdapter(
     private val itens: List<Pair<String, ViagemRemota>>,
-    private val aoCancelar: (viagemId: String, viagem: ViagemRemota) -> Unit
+    private val aoCancelar: (viagemId: String, viagem: ViagemRemota) -> Unit,
+    private val aoVerRota: (viagemId: String) -> Unit
 ) : RecyclerView.Adapter<ViagemAdapter.ViewHolder>() {
 
+    /** Referências das Views de um item da lista, encontradas uma única vez (evita findViewById repetido). */
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val textMotorista: TextView = view.findViewById(R.id.textMotorista)
         val textStatus: TextView = view.findViewById(R.id.textStatus)
@@ -28,11 +35,13 @@ class ViagemAdapter(
 
     private val formatoData = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.forLanguageTag("pt-BR"))
 
+    /** Infla o layout de um item da lista de viagens. */
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_viagem, parent, false)
         return ViewHolder(view)
     }
 
+    /** Preenche o item na posição [position]: motorista/caminhão, status e detalhes (m³, datas, motivo). */
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val (viagemId, item) = itens[position]
         val contexto = holder.itemView.context
@@ -77,7 +86,13 @@ class ViagemAdapter(
         val podeCancelar = item.status == StatusViagem.ATRIBUIDA.name || item.status == StatusViagem.EM_ROTA.name
         holder.botaoCancelar.visibility = if (podeCancelar) View.VISIBLE else View.GONE
         holder.botaoCancelar.setOnClickListener { aoCancelar(viagemId, item) }
+
+        // Só tem rota pra mostrar se o motorista chegou a iniciar o trânsito.
+        val temRota = item.dataInicio != null
+        holder.itemView.isClickable = temRota
+        holder.itemView.setOnClickListener { if (temRota) aoVerRota(viagemId) }
     }
 
+    /** Quantidade de itens da lista, exigido pelo RecyclerView pra saber quanto rolar. */
     override fun getItemCount(): Int = itens.size
 }

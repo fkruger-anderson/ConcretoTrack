@@ -6,6 +6,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
+/** Endereço devolvido pela ViaCEP a partir de um CEP, para preencher o formulário de pedido. */
 data class EnderecoViaCep(
     val rua: String,
     val bairro: String,
@@ -19,6 +20,7 @@ data class EnderecoViaCep(
  */
 object ViaCepServico {
 
+    /** Faz a requisição para o CEP informado; retorna null se o CEP não existir. Roda em Dispatchers.IO por ser I/O de rede bloqueante. */
     suspend fun buscar(cep: String): EnderecoViaCep? = withContext(Dispatchers.IO) {
         val conexao = URL("https://viacep.com.br/ws/$cep/json/").openConnection() as HttpURLConnection
         try {

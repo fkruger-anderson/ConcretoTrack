@@ -6,10 +6,13 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 
+/** Perfil do motorista junto com o uid do documento — o uid não faz parte do [MotoristaPerfil] porque é o id do próprio documento no Firestore. */
 data class MotoristaComId(val uid: String, val perfil: MotoristaPerfil) {
+    /** Mostra só o nome, para aparecer direto no spinner de seleção de motorista. */
     override fun toString(): String = perfil.nome
 }
 
+/** Cadastro e listagem de motoristas, feitos pelo gerente. */
 object MotoristaRepositorio {
 
     // Nome de uma segunda instância do Firebase, só para criar contas de motorista.
@@ -44,6 +47,7 @@ object MotoristaRepositorio {
             .aguardar()
     }
 
+    /** Lista todos os motoristas cadastrados, ordenados por nome (para o spinner de atribuição). */
     suspend fun listar(): List<MotoristaComId> {
         val snapshot = db.collection("motoristas").get().aguardar()
         return snapshot.documents.mapNotNull { documento ->

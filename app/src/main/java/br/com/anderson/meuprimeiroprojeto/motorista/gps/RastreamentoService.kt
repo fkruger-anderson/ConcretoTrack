@@ -11,6 +11,7 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.os.Looper
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import br.com.anderson.meuprimeiroprojeto.R
@@ -43,6 +44,7 @@ class RastreamentoService : Service() {
         private const val CANAL_ID = "rastreamento_viagem"
         private const val NOTIFICACAO_ID = 1001
         private const val INTERVALO_ATUALIZACAO_MS = 10_000L
+        private const val TAG = "RastreamentoService"
     }
 
     private val escopo = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -50,11 +52,18 @@ class RastreamentoService : Service() {
     private var callbackLocalizacao: LocationCallback? = null
     private var viagemId: String? = null
 
+    /** Prepara o cliente de localização (FusedLocationProviderClient) quando o serviço é criado. */
     override fun onCreate() {
         super.onCreate()
         clienteLocalizacao = LocationServices.getFusedLocationProviderClient(this)
     }
 
+    /**
+     * Chamado ao iniciar o serviço (via startForegroundService, com o id da viagem no Intent).
+     * Sobe a notificação fixa exigida por um foreground service do tipo "location" e começa a
+     * pedir atualizações de posição. START_STICKY: se o sistema matar o processo por falta de
+     * memória, o Android tenta recriar o serviço (o Intent original pode vir nulo nesse caso).
+     */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         viagemId = intent?.getStringExtra(EXTRA_VIAGEM_ID)
         if (viagemId.isNullOrBlank()) {
@@ -68,6 +77,11 @@ class RastreamentoService : Service() {
         return START_STICKY
     }
 
+    /**
+     * Registra o callback do FusedLocationProviderClient para receber posições a cada
+     * [INTERVALO_ATUALIZACAO_MS]; cada posição recebida é gravada no Room e depois disparada
+     * para sincronizar a fila offline e atualizar a posição atual no Firestore.
+     */
     private fun iniciarAtualizacoesDeLocalizacao() {
         val temPermissao = ActivityCompat.checkSelfPermission(
             this, Manifest.permission.ACCESS_FINE_LOCATION
@@ -86,6 +100,7 @@ class RastreamentoService : Service() {
         val alvoViagemId = viagemId ?: return
         val pedido = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, INTERVALO_ATUALIZACAO_MS).build()
         val callback = object : LocationCallback() {
+            /** Grava a posição recebida no Room e dispara a sincronização com o Firestore. */
             override fun onLocationResult(resultado: LocationResult) {
                 val localizacao = resultado.lastLocation ?: return
                 val horario = System.currentTimeMillis()
@@ -109,8 +124,11 @@ class RastreamentoService : Service() {
 
     /**
      * A fila offline: tenta subir para o Firestore os pontos que ainda não foram sincronizados.
-     * Se não houver conexão, a primeira falha simplesmente para o loop — os pontos continuam
-     * guardados no Room e a tentativa se repete na próxima atualização de localização (10 em 10s).
+     * Cada ponto é tentado de forma independente — se um falhar (sem conexão, erro do servidor
+     * etc.) os outros pendentes continuam sendo tentados. Antes o primeiro erro interrompia o
+     * laço inteiro, o que travava a sincronização de todos os pontos seguintes (inclusive de
+     * viagens novas) enquanto aquele ponto específico continuasse falhando. O ponto que falhou
+     * continua no Room como pendente e entra na fila de novo na próxima atualização (10 em 10s).
      */
     private suspend fun sincronizarPontosPendentes() {
         val dao = AppDatabase.obter(applicationContext).pontoGpsDao()
@@ -128,7 +146,7 @@ class RastreamentoService : Service() {
                     .aguardar()
                 dao.marcarSincronizado(ponto.id)
             } catch (erro: Exception) {
-                break
+                Log.w(TAG, "Falha ao sincronizar ponto ${ponto.id} da viagem ${ponto.viagemId}", erro)
             }
         }
     }
@@ -155,6 +173,7 @@ class RastreamentoService : Service() {
         }
     }
 
+    /** Canal exigido a partir do Android 8 para mostrar a notificação fixa do serviço. */
     private fun criarCanalDeNotificacao() {
         val gerenciador = getSystemService(NotificationManager::class.java)
         val canal = NotificationChannel(
@@ -163,6 +182,7 @@ class RastreamentoService : Service() {
         gerenciador.createNotificationChannel(canal)
     }
 
+    /** Notificação fixa (ongoing) que o foreground service precisa manter visível enquanto roda. */
     private fun criarNotificacao(): Notification {
         val intentAbrirApp = PendingIntent.getActivity(
             this, 0, Intent(this, MinhasViagensActivity::class.java), PendingIntent.FLAG_IMMUTABLE
@@ -176,11 +196,13 @@ class RastreamentoService : Service() {
             .build()
     }
 
+    /** Para de receber localizações e cancela as coroutines pendentes ao destruir o serviço. */
     override fun onDestroy() {
         super.onDestroy()
         callbackLocalizacao?.let { clienteLocalizacao.removeLocationUpdates(it) }
         escopo.cancel()
     }
 
+    /** Serviço não usa binding (é iniciado com startService/startForegroundService, não bind). */
     override fun onBind(intent: Intent?): IBinder? = null
 }

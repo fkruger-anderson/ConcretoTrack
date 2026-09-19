@@ -7,18 +7,17 @@ import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import br.com.anderson.meuprimeiroprojeto.gerencial.R
-import br.com.anderson.meuprimeiroprojeto.gerencial.backend.CaminhaoRepositorio
-import kotlinx.coroutines.launch
+import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.CadastroCaminhaoErro
+import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.CadastroCaminhaoUiState
+import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.CadastroCaminhaoViewModel
 
+/** Cadastro de caminhão pelo gerente (placa, marca, modelo, ano) — usado depois na atribuição de viagens. */
 class CadastroCaminhaoActivity : AppCompatActivity() {
 
-    companion object {
-        // Cobre placa antiga (LLL-DDDD) e Mercosul (LLL-D-L-DD): a 5ª posição pode ser letra ou número.
-        private val REGEX_PLACA = Regex("^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$")
-    }
+    private val viewModel: CadastroCaminhaoViewModel by viewModels()
 
     private lateinit var editPlaca: EditText
     private lateinit var editMarca: EditText
@@ -28,6 +27,7 @@ class CadastroCaminhaoActivity : AppCompatActivity() {
     private lateinit var progresso: ProgressBar
     private lateinit var textErro: TextView
 
+    /** Liga os campos da tela, o clique do botão e a observação do estado da ViewModel. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_cadastro_caminhao)
@@ -40,55 +40,39 @@ class CadastroCaminhaoActivity : AppCompatActivity() {
         progresso = findViewById(R.id.progresso)
         textErro = findViewById(R.id.textErro)
 
-        botaoCriar.setOnClickListener { tentarCriar() }
+        botaoCriar.setOnClickListener {
+            viewModel.criar(
+                editPlaca.text.toString(),
+                editMarca.text.toString(),
+                editModelo.text.toString(),
+                editAno.text.toString()
+            )
+        }
+
+        viewModel.estado.observe(this) { estado -> exibirEstado(estado) }
     }
 
-    private fun tentarCriar() {
-        val placa = editPlaca.text.toString().trim().uppercase()
-        if (!REGEX_PLACA.matches(placa)) {
-            editPlaca.error = getString(R.string.cadastro_caminhao_erro_placa)
-            return
+    /** Atualiza progresso, erros de campo, erro geral e fecha a tela com um toast quando o cadastro dá certo. */
+    private fun exibirEstado(estado: CadastroCaminhaoUiState) {
+        progresso.visibility = if (estado.carregando) View.VISIBLE else View.GONE
+        botaoCriar.isEnabled = !estado.carregando
+
+        editPlaca.error = if (estado.erroCampoPlaca) getString(R.string.cadastro_caminhao_erro_placa) else null
+        editAno.error = if (estado.erroCampoAno) getString(R.string.cadastro_caminhao_erro_ano) else null
+
+        val mensagemErro = when {
+            estado.erroMarcaModelo -> getString(R.string.cadastro_caminhao_erro_marca_modelo)
+            estado.erroGeral == CadastroCaminhaoErro.PLACA_DUPLICADA ->
+                getString(R.string.cadastro_caminhao_erro_placa_duplicada)
+            estado.erroGeral == CadastroCaminhaoErro.GENERICO -> getString(R.string.cadastro_caminhao_erro_generico)
+            else -> null
         }
+        textErro.visibility = if (mensagemErro != null) View.VISIBLE else View.GONE
+        if (mensagemErro != null) textErro.text = mensagemErro
 
-        val marca = editMarca.text.toString().trim()
-        val modelo = editModelo.text.toString().trim()
-        if (marca.isEmpty() || modelo.isEmpty()) {
-            mostrarErro(getString(R.string.cadastro_caminhao_erro_marca_modelo))
-            return
+        estado.sucesso?.getConteudoSeNaoTratado()?.let {
+            Toast.makeText(this, R.string.cadastro_caminhao_sucesso, Toast.LENGTH_LONG).show()
+            finish()
         }
-
-        val ano = editAno.text.toString().trim().toIntOrNull()
-        if (ano == null || ano < 1970 || ano > 2100) {
-            editAno.error = getString(R.string.cadastro_caminhao_erro_ano)
-            return
-        }
-
-        mostrarCarregando(true)
-        lifecycleScope.launch {
-            try {
-                CaminhaoRepositorio.cadastrar(placa, marca, modelo, ano)
-                Toast.makeText(
-                    this@CadastroCaminhaoActivity, R.string.cadastro_caminhao_sucesso, Toast.LENGTH_LONG
-                ).show()
-                finish()
-            } catch (erro: CaminhaoRepositorio.PlacaJaCadastradaException) {
-                mostrarErro(getString(R.string.cadastro_caminhao_erro_placa_duplicada))
-            } catch (erro: Exception) {
-                mostrarErro(getString(R.string.cadastro_caminhao_erro_generico))
-            } finally {
-                mostrarCarregando(false)
-            }
-        }
-    }
-
-    private fun mostrarCarregando(carregando: Boolean) {
-        progresso.visibility = if (carregando) View.VISIBLE else View.GONE
-        botaoCriar.isEnabled = !carregando
-        if (carregando) textErro.visibility = View.GONE
-    }
-
-    private fun mostrarErro(mensagem: String) {
-        textErro.text = mensagem
-        textErro.visibility = View.VISIBLE
     }
 }

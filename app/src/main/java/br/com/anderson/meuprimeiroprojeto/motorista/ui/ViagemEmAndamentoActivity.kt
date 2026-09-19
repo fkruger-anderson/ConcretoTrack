@@ -11,35 +11,30 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
 import br.com.anderson.meuprimeiroprojeto.R
-import br.com.anderson.meuprimeiroprojeto.motorista.backend.PedidoRepositorio
-import br.com.anderson.meuprimeiroprojeto.motorista.backend.ViagemRemota
-import br.com.anderson.meuprimeiroprojeto.motorista.backend.ViagemRepositorio
-import br.com.anderson.meuprimeiroprojeto.motorista.db.AppDatabase
-import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusViagem
 import br.com.anderson.meuprimeiroprojeto.motorista.gps.RastreamentoService
-import com.google.firebase.Firebase
-import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.firestore
-import kotlinx.coroutines.launch
+import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.ViagemEmAndamentoUiState
+import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.ViagemEmAndamentoViewModel
 
 /** Tela exibida enquanto a viagem está em rota: liga o serviço de GPS e permite finalizar. */
 class ViagemEmAndamentoActivity : AppCompatActivity() {
 
     companion object {
+        /** Chave do extra usado para informar o id da viagem ao abrir esta Activity. */
         const val EXTRA_VIAGEM_ID = "viagem_id"
     }
+
+    private val viewModel: ViagemEmAndamentoViewModel by viewModels()
 
     private lateinit var viagemId: String
     private lateinit var textPontos: TextView
     private lateinit var botaoAjustarBateria: Button
     private lateinit var textBateria: TextView
-    private var registroCancelamento: ListenerRegistration? = null
-    private var jaTratouCancelamento = false
 
+    /** Trata o resultado do pedido de permissão de localização (fina/aproximada e notificações). */
     private val launcherPermissoesLocalizacao =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { resultados ->
             val localizacaoConcedida = resultados[Manifest.permission.ACCESS_FINE_LOCATION] == true
@@ -53,6 +48,7 @@ class ViagemEmAndamentoActivity : AppCompatActivity() {
             }
         }
 
+    /** Trata o resultado do pedido de permissão de localização em segundo plano. */
     private val launcherPermissaoSegundoPlano =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
             // Com o foreground service do tipo "location" o rastreamento já funciona mesmo
@@ -61,6 +57,10 @@ class ViagemEmAndamentoActivity : AppCompatActivity() {
             iniciarServico()
         }
 
+    /**
+     * Lê o id da viagem, inicia a ViewModel, checa a otimização de bateria e dispara o pedido
+     * de permissões de localização (que, se concedidas, liga o serviço de GPS).
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_viagem_em_andamento)
@@ -80,59 +80,32 @@ class ViagemEmAndamentoActivity : AppCompatActivity() {
         botaoAjustarBateria.setOnClickListener { abrirAjusteDeBateria() }
         findViewById<Button>(R.id.botaoFinalizar).setOnClickListener { finalizarViagem() }
 
-        carregarDadosDoPedido()
+        viewModel.estado.observe(this) { estado -> exibirEstado(estado) }
+        viewModel.iniciar(viagemId)
+
         verificarOtimizacaoDeBateria()
         pedirPermissaoDeLocalizacaoEIniciar()
-        escutarCancelamento()
     }
 
-    /**
-     * O gerente pode cancelar a viagem pelo app dele enquanto o motorista está rodando —
-     * sem isso o GPS ficaria gravando pontos de uma viagem que não existe mais pro gerente.
-     * Escutar o próprio documento é mais simples que ficar consultando de tempos em tempos.
-     */
-    private fun escutarCancelamento() {
-        registroCancelamento = Firebase.firestore.collection("viagens").document(viagemId)
-            .addSnapshotListener { snapshot, _ ->
-                val viagem = snapshot?.toObject(ViagemRemota::class.java) ?: return@addSnapshotListener
-                if (viagem.status == StatusViagem.CANCELADA.name && !jaTratouCancelamento) {
-                    jaTratouCancelamento = true
-                    tratarCancelamentoRemoto(viagem.motivoCancelamento)
-                }
-            }
+    /** Atualiza os textos da tela e trata um cancelamento remoto vindo do gerente, se houver. */
+    private fun exibirEstado(estado: ViagemEmAndamentoUiState) {
+        findViewById<TextView>(R.id.textDestinatario).text = estado.destinatarioNome
+        textPontos.text = getString(R.string.andamento_pontos_formato, estado.totalPontos, estado.pontosPendentes)
+
+        estado.cancelamento?.getConteudoSeNaoTratado()?.let { motivo -> tratarCancelamentoRemoto(motivo) }
     }
 
-    private fun tratarCancelamentoRemoto(motivo: String?) {
+    /** Para o serviço de GPS e volta pra lista de viagens quando o gerente cancela a viagem. */
+    private fun tratarCancelamentoRemoto(motivo: String) {
         stopService(Intent(this, RastreamentoService::class.java))
-        Toast.makeText(
-            this,
-            getString(R.string.andamento_viagem_cancelada, motivo ?: ""),
-            Toast.LENGTH_LONG
-        ).show()
+        Toast.makeText(this, getString(R.string.andamento_viagem_cancelada, motivo), Toast.LENGTH_LONG).show()
 
         val intent = Intent(this, MinhasViagensActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         startActivity(intent)
     }
 
-    private fun carregarDadosDoPedido() {
-        lifecycleScope.launch {
-            val viagem = try {
-                ViagemRepositorio.buscarPorId(viagemId)
-            } catch (erro: Exception) {
-                null
-            }
-            val pedido = viagem?.let {
-                try {
-                    PedidoRepositorio.buscarPorId(it.pedidoId)
-                } catch (erro: Exception) {
-                    null
-                }
-            }
-            findViewById<TextView>(R.id.textDestinatario).text = pedido?.destinatarioNome ?: ""
-        }
-    }
-
+    /** Pede permissão de localização (e notificações, no Android 13+) se ainda não concedida. */
     private fun pedirPermissaoDeLocalizacaoEIniciar() {
         val jaTemLocalizacao = ContextCompat.checkSelfPermission(
             this, Manifest.permission.ACCESS_FINE_LOCATION
@@ -153,6 +126,7 @@ class ViagemEmAndamentoActivity : AppCompatActivity() {
         launcherPermissoesLocalizacao.launch(permissoes.toTypedArray())
     }
 
+    /** Pede a permissão de localização em segundo plano, necessária para rastrear com a tela fechada. */
     private fun pedirPermissaoDeSegundoPlano() {
         val jaTemSegundoPlano = ContextCompat.checkSelfPermission(
             this, Manifest.permission.ACCESS_BACKGROUND_LOCATION
@@ -165,12 +139,17 @@ class ViagemEmAndamentoActivity : AppCompatActivity() {
         }
     }
 
+    /** Sobe o foreground service de rastreamento de GPS para esta viagem. */
     private fun iniciarServico() {
         val intent = Intent(this, RastreamentoService::class.java)
             .putExtra(RastreamentoService.EXTRA_VIAGEM_ID, viagemId)
         ContextCompat.startForegroundService(this, intent)
     }
 
+    /**
+     * Mostra o aviso e o botão para pedir isenção da otimização de bateria, só se o Android
+     * ainda não isentou o app — sem isso o sistema pode matar o serviço de GPS em segundo plano.
+     */
     private fun verificarOtimizacaoDeBateria() {
         val powerManager = getSystemService(POWER_SERVICE) as PowerManager
         val ignorandoOtimizacao = powerManager.isIgnoringBatteryOptimizations(packageName)
@@ -178,6 +157,7 @@ class ViagemEmAndamentoActivity : AppCompatActivity() {
         textBateria.visibility = botaoAjustarBateria.visibility
     }
 
+    /** Abre a tela do sistema para o usuário isentar o app da otimização de bateria. */
     private fun abrirAjusteDeBateria() {
         val intent = Intent(
             Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
@@ -186,37 +166,27 @@ class ViagemEmAndamentoActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
+    /** Pede à ViewModel para recontar quantos pontos de GPS já foram gravados/sincronizados. */
     private fun atualizarContagemDePontos() {
-        lifecycleScope.launch {
-            val dao = AppDatabase.obter(this@ViagemEmAndamentoActivity).pontoGpsDao()
-            val total = dao.contarPorViagem(viagemId)
-            val pendentes = dao.contarPendentesPorViagem(viagemId)
-            textPontos.text = getString(R.string.andamento_pontos_formato, total, pendentes)
-        }
+        viewModel.atualizarContagemDePontos(viagemId)
     }
 
+    /** Reavalia a isenção de bateria e a contagem de pontos toda vez que a tela volta a ficar visível. */
     override fun onResume() {
         super.onResume()
         verificarOtimizacaoDeBateria()
         atualizarContagemDePontos()
     }
 
+    /** Para o serviço de GPS, marca a viagem como concluída e volta pra lista de viagens. */
     private fun finalizarViagem() {
-        jaTratouCancelamento = true
         stopService(Intent(this, RastreamentoService::class.java))
-        // Não espera confirmação do servidor — funciona mesmo sem sinal (ver o comentário em
-        // ViagemRepositorio.finalizarViagem).
-        ViagemRepositorio.finalizarViagem(viagemId)
+        viewModel.finalizarViagem(viagemId)
 
         Toast.makeText(this, R.string.andamento_viagem_finalizada, Toast.LENGTH_SHORT).show()
 
         val intent = Intent(this, MinhasViagensActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         startActivity(intent)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        registroCancelamento?.remove()
     }
 }

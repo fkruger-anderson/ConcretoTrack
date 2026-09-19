@@ -6,14 +6,12 @@ import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import br.com.anderson.meuprimeiroprojeto.R
-import br.com.anderson.meuprimeiroprojeto.motorista.backend.PedidoRepositorio
-import br.com.anderson.meuprimeiroprojeto.motorista.backend.ViagemRemota
-import br.com.anderson.meuprimeiroprojeto.motorista.backend.ViagemRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.formatarM3
-import kotlinx.coroutines.launch
+import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.IniciarTransitoUiState
+import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.IniciarTransitoViewModel
 
 /**
  * Mostra os dados da viagem que o gerente atribuiu (pedido, endereço, m³, caminhão — nada disso
@@ -22,13 +20,17 @@ import kotlinx.coroutines.launch
 class IniciarTransitoActivity : AppCompatActivity() {
 
     companion object {
+        /** Chave do extra usado para informar o id da viagem ao abrir esta Activity. */
         const val EXTRA_VIAGEM_ID = "viagem_id"
     }
+
+    private val viewModel: IniciarTransitoViewModel by viewModels()
 
     private lateinit var viagemId: String
     private lateinit var botaoIniciar: Button
     private lateinit var textErro: TextView
 
+    /** Lê o id da viagem do Intent (fecha a tela se faltar) e começa a observar o estado da ViewModel. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_iniciar_transito)
@@ -44,32 +46,20 @@ class IniciarTransitoActivity : AppCompatActivity() {
         textErro = findViewById(R.id.textErro)
         botaoIniciar.setOnClickListener { tentarIniciar() }
 
-        carregarDadosDaViagem()
+        viewModel.estado.observe(this) { estado -> exibirEstado(estado) }
+        viewModel.carregar(viagemId)
     }
 
-    private fun carregarDadosDaViagem() {
-        lifecycleScope.launch {
-            val viagem = try {
-                ViagemRepositorio.buscarPorId(viagemId)
-            } catch (erro: Exception) {
-                null
-            }
-            if (viagem == null) {
-                mostrarErro(getString(R.string.iniciar_transito_erro_carregar))
-                return@launch
-            }
-            exibirViagem(viagem)
+    /** Preenche os campos da tela com os dados da viagem, ou mostra erro se falhou ao carregar. */
+    private fun exibirEstado(estado: IniciarTransitoUiState) {
+        if (estado.erroAoCarregar) {
+            mostrarErro(getString(R.string.iniciar_transito_erro_carregar))
+            return
         }
-    }
 
-    private suspend fun exibirViagem(viagem: ViagemRemota) {
-        val pedido = try {
-            PedidoRepositorio.buscarPorId(viagem.pedidoId)
-        } catch (erro: Exception) {
-            null
-        }
-        findViewById<TextView>(R.id.textDestinatario).text = pedido?.destinatarioNome ?: ""
-        findViewById<TextView>(R.id.textEndereco).text = pedido?.enderecoResumido() ?: ""
+        val viagem = estado.viagem ?: return
+        findViewById<TextView>(R.id.textDestinatario).text = viagem.destinatarioNome
+        findViewById<TextView>(R.id.textEndereco).text = viagem.enderecoResumido
         findViewById<TextView>(R.id.textMetrosCubicos).text = getString(
             R.string.iniciar_transito_m3_formato, formatarM3(viagem.metrosCubicos)
         )
@@ -78,10 +68,9 @@ class IniciarTransitoActivity : AppCompatActivity() {
         )
     }
 
+    /** Confirma o início do trânsito e já navega para a tela de viagem em andamento. */
     private fun tentarIniciar() {
-        // Não espera confirmação do servidor — funciona mesmo sem sinal (ver o comentário em
-        // ViagemRepositorio.iniciarTransito).
-        ViagemRepositorio.iniciarTransito(viagemId)
+        viewModel.iniciarTransito(viagemId)
 
         Toast.makeText(this, R.string.iniciar_transito_sucesso, Toast.LENGTH_SHORT).show()
 
@@ -91,6 +80,7 @@ class IniciarTransitoActivity : AppCompatActivity() {
         finish()
     }
 
+    /** Exibe a mensagem de erro na tela. */
     private fun mostrarErro(mensagem: String) {
         textErro.text = mensagem
         textErro.visibility = View.VISIBLE

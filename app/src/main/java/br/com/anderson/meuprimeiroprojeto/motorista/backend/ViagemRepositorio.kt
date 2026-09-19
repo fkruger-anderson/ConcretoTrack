@@ -2,6 +2,7 @@ package br.com.anderson.meuprimeiroprojeto.motorista.backend
 
 import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusViagem
 import com.google.firebase.Firebase
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.firestore
 
 /** As viagens agora são criadas pelo gerente (app gerencial); o motorista só as lista e inicia. */
@@ -50,9 +51,23 @@ object ViagemRepositorio {
             )
     }
 
+    /** Busca os dados de uma viagem específica pelo id do documento. */
     suspend fun buscarPorId(viagemId: String): ViagemRemota? {
         val documento = db.collection("viagens").document(viagemId).get().aguardar()
         return documento.toObject(ViagemRemota::class.java)
+    }
+
+    /**
+     * Escuta o documento da viagem em tempo real — usado pra saber se o gerente cancelou pelo
+     * app dele enquanto o motorista está em rota. Quem cancela a escuta é o chamador, guardando
+     * o [ListenerRegistration] retornado e chamando `.remove()` quando não precisar mais.
+     */
+    fun escutarViagem(viagemId: String, aoAtualizar: (ViagemRemota) -> Unit): ListenerRegistration {
+        return db.collection("viagens").document(viagemId)
+            .addSnapshotListener { snapshot, _ ->
+                val viagem = snapshot?.toObject(ViagemRemota::class.java) ?: return@addSnapshotListener
+                aoAtualizar(viagem)
+            }
     }
 
     /** Usado para voltar à tela de rastreamento se o motorista sair dela sem finalizar. */

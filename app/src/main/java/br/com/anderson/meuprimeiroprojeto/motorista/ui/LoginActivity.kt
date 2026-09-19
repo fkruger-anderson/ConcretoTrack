@@ -7,16 +7,20 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import br.com.anderson.meuprimeiroprojeto.R
-import br.com.anderson.meuprimeiroprojeto.motorista.backend.AutenticacaoRepositorio
-import br.com.anderson.meuprimeiroprojeto.motorista.sessao.SessaoMotorista
-import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
-import com.google.firebase.auth.FirebaseAuthInvalidUserException
-import kotlinx.coroutines.launch
+import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.LoginErro
+import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.LoginUiState
+import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.LoginViewModel
 
+/**
+ * Tela de login do motorista. O motorista não se cadastra sozinho — email e senha são
+ * criados pelo gerente no app gerencial; aqui ele só entra com essas credenciais.
+ */
 class LoginActivity : AppCompatActivity() {
+
+    private val viewModel: LoginViewModel by viewModels()
 
     private lateinit var editEmail: EditText
     private lateinit var editSenha: EditText
@@ -24,11 +28,14 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var progresso: ProgressBar
     private lateinit var textErro: TextView
 
+    /**
+     * Se já existe uma sessão do Firebase Auth ativa, pula direto para a lista de viagens
+     * sem mostrar a tela de login de novo.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // O Firebase Auth já lembra a sessão sozinho; se já tem usuário, pula pra lista.
-        if (AutenticacaoRepositorio.usuarioAtual != null) {
+        if (viewModel.jaEstaLogado()) {
             abrirMinhasViagens()
             return
         }
@@ -41,50 +48,31 @@ class LoginActivity : AppCompatActivity() {
         progresso = findViewById(R.id.progresso)
         textErro = findViewById(R.id.textErro)
 
-        botaoEntrar.setOnClickListener { tentarEntrar() }
-    }
-
-    private fun tentarEntrar() {
-        val email = editEmail.text.toString().trim()
-        val senha = editSenha.text.toString()
-
-        if (email.isEmpty() || senha.isEmpty()) {
-            mostrarErro(getString(R.string.login_erro_campos_vazios))
-            return
+        botaoEntrar.setOnClickListener {
+            viewModel.entrar(editEmail.text.toString().trim(), editSenha.text.toString())
         }
 
-        mostrarCarregando(true)
-        lifecycleScope.launch {
-            try {
-                val usuario = AutenticacaoRepositorio.entrar(email, senha)
-                val perfil = AutenticacaoRepositorio.buscarPerfil(usuario.uid)
-                if (perfil != null) {
-                    SessaoMotorista.salvar(this@LoginActivity, perfil.nome, perfil.cpf)
-                }
-                abrirMinhasViagens()
-            } catch (erro: FirebaseAuthInvalidUserException) {
-                mostrarErro(getString(R.string.login_erro_credenciais))
-            } catch (erro: FirebaseAuthInvalidCredentialsException) {
-                mostrarErro(getString(R.string.login_erro_credenciais))
-            } catch (erro: Exception) {
-                mostrarErro(getString(R.string.login_erro_generico))
-            } finally {
-                mostrarCarregando(false)
-            }
+        viewModel.estado.observe(this) { estado -> exibirEstado(estado) }
+    }
+
+    /** Mostra progresso/erro conforme o estado da ViewModel e navega ao ter sucesso no login. */
+    private fun exibirEstado(estado: LoginUiState) {
+        progresso.visibility = if (estado.carregando) View.VISIBLE else View.GONE
+        botaoEntrar.isEnabled = !estado.carregando
+
+        val mensagemErro = when (estado.erro) {
+            LoginErro.CAMPOS_VAZIOS -> getString(R.string.login_erro_campos_vazios)
+            LoginErro.CREDENCIAIS_INVALIDAS -> getString(R.string.login_erro_credenciais)
+            LoginErro.GENERICO -> getString(R.string.login_erro_generico)
+            null -> null
         }
+        textErro.visibility = if (mensagemErro != null) View.VISIBLE else View.GONE
+        if (mensagemErro != null) textErro.text = mensagemErro
+
+        estado.sucesso?.getConteudoSeNaoTratado()?.let { abrirMinhasViagens() }
     }
 
-    private fun mostrarCarregando(carregando: Boolean) {
-        progresso.visibility = if (carregando) View.VISIBLE else View.GONE
-        botaoEntrar.isEnabled = !carregando
-        if (carregando) textErro.visibility = View.GONE
-    }
-
-    private fun mostrarErro(mensagem: String) {
-        textErro.text = mensagem
-        textErro.visibility = View.VISIBLE
-    }
-
+    /** Abre a lista de viagens e encerra o login, para que o botão "voltar" não retorne pra ele. */
     private fun abrirMinhasViagens() {
         startActivity(Intent(this, MinhasViagensActivity::class.java))
         finish()

@@ -27,20 +27,24 @@
             android:name=".ui.CadastroActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.HomeActivity"
+            android:name=".ui.MainActivity"
             android:exported="false" />
         <activity
             android:name=".ui.NovoPedidoActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
         <activity
-            android:name=".ui.MapaActivity"
-            android:exported="false" />
-        <activity
             android:name=".ui.HistoricoPedidoActivity"
             android:exported="false" />
         <activity
+            android:name=".ui.RotaViagemActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.CadastroMotoristaActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.CadastroGerenteActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
         <activity

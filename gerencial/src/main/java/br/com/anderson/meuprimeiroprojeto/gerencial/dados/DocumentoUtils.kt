@@ -9,8 +9,10 @@ object DocumentoUtils {
     const val FISICA = "FISICA"
     const val JURIDICA = "JURIDICA"
 
+    /** Remove tudo que não é dígito (pontos, traço, barra da máscara). */
     fun apenasDigitos(texto: String): String = texto.filter { it.isDigit() }
 
+    /** Deriva o tipo de pessoa pela quantidade de dígitos; null se não for nem CPF nem CNPJ. */
     fun tipoPessoa(documentoComOuSemMascara: String): String? {
         val digitos = apenasDigitos(documentoComOuSemMascara)
         return when (digitos.length) {
@@ -20,6 +22,7 @@ object DocumentoUtils {
         }
     }
 
+    /** Valida CPF ou CNPJ (conforme o tamanho) pelos dígitos verificadores. */
     fun documentoValido(documentoComOuSemMascara: String): Boolean {
         val digitos = apenasDigitos(documentoComOuSemMascara)
         return when (digitos.length) {
@@ -29,6 +32,7 @@ object DocumentoUtils {
         }
     }
 
+    /** Aplica a máscara de CPF ou CNPJ enquanto o usuário digita, mesmo com o documento incompleto. */
     fun formatar(documentoComOuSemMascara: String): String {
         val d = apenasDigitos(documentoComOuSemMascara)
         return when {
@@ -37,6 +41,7 @@ object DocumentoUtils {
         }
     }
 
+    /** Insere pontos e traço nas posições do CPF, parando onde os dígitos disponíveis acabarem. */
     private fun formatarCpfParcial(d: String): String {
         val sb = StringBuilder()
         for (i in d.indices) {
@@ -49,6 +54,7 @@ object DocumentoUtils {
         return sb.toString()
     }
 
+    /** Insere pontos, barra e traço nas posições do CNPJ, parando onde os dígitos disponíveis acabarem. */
     private fun formatarCnpjParcial(d: String): String {
         val sb = StringBuilder()
         for (i in d.indices) {
@@ -62,6 +68,7 @@ object DocumentoUtils {
         return sb.toString()
     }
 
+    /** Confere os dois dígitos verificadores do CPF; rejeita também sequências como "111.111.111-11". */
     private fun cpfValido(cpf: String): Boolean {
         if (cpf.length != 11 || cpf.all { it == cpf[0] }) return false
         val digitos = cpf.map { it - '0' }
@@ -70,6 +77,7 @@ object DocumentoUtils {
         return digitos[9] == d1 && digitos[10] == d2
     }
 
+    /** Confere os dois dígitos verificadores do CNPJ, com os pesos fixos definidos pela Receita. */
     private fun cnpjValido(cnpj: String): Boolean {
         if (cnpj.length != 14 || cnpj.all { it == cnpj[0] }) return false
         val digitos = cnpj.map { it - '0' }
@@ -92,6 +100,7 @@ object DocumentoUtils {
         return if (resto == 10) 0 else resto
     }
 
+    /** Usado pelo CNPJ: mesma ideia do CPF, mas com pesos fornecidos explicitamente em vez de decrescer de 1 em 1. */
     private fun digitoVerificadorComPesos(digitos: List<Int>, pesos: List<Int>): Int {
         val soma = digitos.indices.sumOf { digitos[it] * pesos[it] }
         val resto = soma % 11

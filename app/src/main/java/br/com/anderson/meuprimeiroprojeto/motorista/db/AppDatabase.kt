@@ -12,12 +12,14 @@ import androidx.room.RoomDatabase
 @Database(entities = [PontoGps::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
+    /** DAO de acesso aos pontos de GPS gravados localmente. */
     abstract fun pontoGpsDao(): PontoGpsDao
 
     companion object {
         @Volatile
         private var instancia: AppDatabase? = null
 
+        /** Retorna a instância única do banco (padrão singleton), criando-a na primeira chamada. */
         fun obter(context: Context): AppDatabase =
             instancia ?: synchronized(this) {
                 instancia ?: Room.databaseBuilder(
