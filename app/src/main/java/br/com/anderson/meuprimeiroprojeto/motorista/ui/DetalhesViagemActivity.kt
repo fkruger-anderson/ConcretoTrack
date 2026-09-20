@@ -253,7 +253,7 @@ class DetalhesViagemActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun tratarEncerramentoConfirmado() {
         Toast.makeText(this, R.string.andamento_viagem_finalizada, Toast.LENGTH_SHORT).show()
-        val intent = Intent(this, ViagensAbertasActivity::class.java)
+        val intent = Intent(this, MotoristaHomeActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         startActivity(intent)
     }
@@ -261,7 +261,7 @@ class DetalhesViagemActivity : AppCompatActivity(), OnMapReadyCallback {
     private fun tratarCancelamentoRemoto(motivo: String) {
         RastreamentoService.encerrar(this, viagemId)
         Toast.makeText(this, getString(R.string.andamento_viagem_cancelada, motivo), Toast.LENGTH_LONG).show()
-        val intent = Intent(this, ViagensAbertasActivity::class.java)
+        val intent = Intent(this, MotoristaHomeActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         startActivity(intent)
     }

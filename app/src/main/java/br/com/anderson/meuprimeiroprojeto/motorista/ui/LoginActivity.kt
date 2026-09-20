@@ -74,7 +74,7 @@ class LoginActivity : AppCompatActivity() {
 
     /** Abre a lista de viagens e encerra o login, para que o botão "voltar" não retorne pra ele. */
     private fun abrirListaDeViagens() {
-        startActivity(Intent(this, ViagensAbertasActivity::class.java))
+        startActivity(Intent(this, MotoristaHomeActivity::class.java))
         finish()
     }
 }

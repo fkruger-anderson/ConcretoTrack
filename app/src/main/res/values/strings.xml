@@ -42,4 +42,8 @@
 
     <string name="cancelar_viagem_confirmar">Confirmar</string>
     <string name="cancelar_viagem_voltar">Voltar</string>
+
+    <string name="nav_viagens">Viagens</string>
+    <string name="nav_roteiro">Roteiro</string>
+    <string name="roteiro_vazio">Nenhum roteiro em andamento. Toque numa viagem em Viagens para começar a montar um.</string>
 </resources>

@@ -20,7 +20,7 @@ import br.com.anderson.meuprimeiroprojeto.R
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.aguardar
 import br.com.anderson.meuprimeiroprojeto.motorista.db.AppDatabase
 import br.com.anderson.meuprimeiroprojeto.motorista.db.PontoGps
-import br.com.anderson.meuprimeiroprojeto.motorista.ui.ViagensAbertasActivity
+import br.com.anderson.meuprimeiroprojeto.motorista.ui.MotoristaHomeActivity
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -215,7 +215,7 @@ class RastreamentoService : Service() {
 
     private fun criarNotificacao(): Notification {
         val intentAbrirApp = PendingIntent.getActivity(
-            this, 0, Intent(this, ViagensAbertasActivity::class.java), PendingIntent.FLAG_IMMUTABLE
+            this, 0, Intent(this, MotoristaHomeActivity::class.java), PendingIntent.FLAG_IMMUTABLE
         )
         return NotificationCompat.Builder(this, CANAL_ID)
             .setContentTitle(getString(R.string.notificacao_rastreamento_titulo))
