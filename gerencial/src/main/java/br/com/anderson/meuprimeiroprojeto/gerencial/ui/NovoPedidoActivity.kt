@@ -23,10 +23,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
-/**
- * Cadastro de um novo pedido: dados do destinatário (documento, nome, endereço) e a quantidade
- * total em m³. O endereço pode ser preenchido automaticamente a partir do CEP (ViaCEP).
- */
+/** Cadastro de um novo pedido: dados do destinatário (documento, nome, endereço) e a quantidade total em m³. */
 class NovoPedidoActivity : AppCompatActivity() {
 
     private val viewModel: NovoPedidoViewModel by viewModels()
@@ -35,7 +32,6 @@ class NovoPedidoActivity : AppCompatActivity() {
     private lateinit var editDocumento: EditText
     private lateinit var editNome: EditText
     private lateinit var editCep: EditText
-    private lateinit var progressoCep: ProgressBar
     private lateinit var editRua: EditText
     private lateinit var editNumero: EditText
     private lateinit var editBairro: EditText
@@ -50,7 +46,7 @@ class NovoPedidoActivity : AppCompatActivity() {
     // Timestamp (meia-noite do dia escolhido) da data de entrega; null enquanto o gerente não escolher.
     private var dataEntregaSelecionada: Long? = null
 
-    /** Liga as Views, o autocompletar de UF, a máscara de CPF/CNPJ e os botões de buscar CEP/salvar. */
+    /** Liga as Views, o autocompletar de UF, a máscara de CPF/CNPJ e os botões de data/salvar. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_novo_pedido)
@@ -58,7 +54,6 @@ class NovoPedidoActivity : AppCompatActivity() {
         editDocumento = findViewById(R.id.editDocumento)
         editNome = findViewById(R.id.editNome)
         editCep = findViewById(R.id.editCep)
-        progressoCep = findViewById(R.id.progressoCep)
         editRua = findViewById(R.id.editRua)
         editNumero = findViewById(R.id.editNumero)
         editBairro = findViewById(R.id.editBairro)
@@ -73,9 +68,6 @@ class NovoPedidoActivity : AppCompatActivity() {
         editUf.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, Uf.siglas))
         editDocumento.addTextChangedListener(MascaraDocumento(editDocumento))
 
-        findViewById<Button>(R.id.botaoBuscarCep).setOnClickListener {
-            viewModel.buscarCep(editCep.text.toString())
-        }
         botaoDataEntrega.setOnClickListener { abrirSeletorDeDataEntrega() }
         botaoSalvar.setOnClickListener {
             viewModel.salvar(
@@ -116,18 +108,8 @@ class NovoPedidoActivity : AppCompatActivity() {
         ).show()
     }
 
-    /** Reflete o [NovoPedidoUiState] atual: progresso do CEP, endereço preenchido, erros e sucesso. */
+    /** Reflete o [NovoPedidoUiState] atual: progresso do salvamento, erros e sucesso. */
     private fun exibirEstado(estado: NovoPedidoUiState) {
-        progressoCep.visibility = if (estado.buscandoCep) View.VISIBLE else View.GONE
-        editCep.error = if (estado.erroCep) getString(R.string.novo_pedido_erro_cep) else null
-
-        estado.enderecoEncontrado?.getConteudoSeNaoTratado()?.let { endereco ->
-            editRua.setText(endereco.rua)
-            editBairro.setText(endereco.bairro)
-            editCidade.setText(endereco.cidade)
-            editUf.setText(endereco.uf, false)
-        }
-
         progresso.visibility = if (estado.carregando) View.VISIBLE else View.GONE
         botaoSalvar.isEnabled = !estado.carregando
 

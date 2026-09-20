@@ -24,9 +24,6 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".ui.CadastroActivity"
-            android:exported="false" />
-        <activity
             android:name=".ui.MainActivity"
             android:exported="false" />
         <activity

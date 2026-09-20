@@ -32,36 +32,14 @@
             android:hint="@string/novo_pedido_hint_nome"
             android:inputType="textPersonName|textCapWords" />
 
-        <LinearLayout
+        <EditText
+            android:id="@+id/editCep"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
             android:layout_marginTop="12dp"
-            android:gravity="center_vertical">
-
-            <EditText
-                android:id="@+id/editCep"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:hint="@string/novo_pedido_hint_cep"
-                android:inputType="number"
-                android:maxLength="8" />
-
-            <Button
-                android:id="@+id/botaoBuscarCep"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="@string/novo_pedido_botao_buscar_cep" />
-        </LinearLayout>
-
-        <ProgressBar
-            android:id="@+id/progressoCep"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:visibility="gone" />
+            android:hint="@string/novo_pedido_hint_cep"
+            android:inputType="number"
+            android:maxLength="8" />
 
         <EditText
             android:id="@+id/editRua"

@@ -48,9 +48,6 @@ class LoginActivity : AppCompatActivity() {
         botaoEntrar.setOnClickListener {
             viewModel.entrar(editEmail.text.toString().trim(), editSenha.text.toString())
         }
-        findViewById<TextView>(R.id.botaoIrParaCadastro).setOnClickListener {
-            startActivity(Intent(this, CadastroActivity::class.java))
-        }
 
         viewModel.estado.observe(this) { estado -> exibirEstado(estado) }
     }
