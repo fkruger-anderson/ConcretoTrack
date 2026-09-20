@@ -61,19 +61,19 @@ class MapaFragment : Fragment(R.layout.fragment_mapa), OnMapReadyCallback {
     /** Cria/move um Marker por caminhão em rota e remove os que não estão mais na lista. */
     private fun exibirCaminhoes(caminhoes: List<CaminhaoEmRota>) {
         val mapaAtual = mapa ?: return
-        val idsAtivos = caminhoes.map { it.viagemId }.toSet()
+        val idsAtivos = caminhoes.map { it.roteiroId }.toSet()
 
         for (caminhao in caminhoes) {
             val posicao = LatLng(caminhao.latitude, caminhao.longitude)
-            val titulo = getString(R.string.mapa_marcador_formato, caminhao.motoristaNome, caminhao.caminhaoPlaca)
+            val titulo = caminhao.motoristaNome
 
-            val marcadorExistente = marcadores[caminhao.viagemId]
+            val marcadorExistente = marcadores[caminhao.roteiroId]
             if (marcadorExistente != null) {
                 marcadorExistente.position = posicao
                 marcadorExistente.title = titulo
             } else {
                 val novoMarcador = mapaAtual.addMarker(MarkerOptions().position(posicao).title(titulo))
-                if (novoMarcador != null) marcadores[caminhao.viagemId] = novoMarcador
+                if (novoMarcador != null) marcadores[caminhao.roteiroId] = novoMarcador
             }
         }
 
