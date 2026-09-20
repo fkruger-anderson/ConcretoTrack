@@ -1,5 +1,6 @@
 package br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -163,9 +164,18 @@ class DetalhesViagemViewModel : ViewModel() {
         }
     }
 
-    /** Não espera confirmação do servidor — mesmo raciocínio das escritas simples do motorista. */
-    fun marcarEntregue(viagemId: String) {
-        RoteiroRepositorio.marcarEntregue(viagemId)
-        _estado.value = _estado.value?.copy(acaoConcluida = Evento(Unit))
+    /** Confirma a entrega no servidor (transação — ver [RoteiroRepositorio.marcarEntregue]). */
+    fun marcarEntregue(context: Context, viagemId: String) {
+        viewModelScope.launch {
+            val confirmado = RoteiroRepositorio.marcarEntregue(context, viagemId)
+            _estado.value = if (confirmado) {
+                _estado.value?.copy(acaoConcluida = Evento(Unit))
+            } else {
+                _estado.value?.copy(
+                    acaoConcluida = Evento(Unit),
+                    erroAcao = Evento("Sem conexão agora. A confirmação de entrega será enviada automaticamente quando a conexão voltar")
+                )
+            }
+        }
     }
 }

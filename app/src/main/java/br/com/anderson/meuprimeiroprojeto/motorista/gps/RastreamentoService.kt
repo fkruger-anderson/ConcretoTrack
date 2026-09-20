@@ -17,6 +17,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import br.com.anderson.meuprimeiroprojeto.R
+import br.com.anderson.meuprimeiroprojeto.motorista.backend.RoteiroRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.aguardar
 import br.com.anderson.meuprimeiroprojeto.motorista.db.AppDatabase
 import br.com.anderson.meuprimeiroprojeto.motorista.db.PontoGps
@@ -143,6 +144,7 @@ class RastreamentoService : Service() {
                     )
                     atualizarPosicaoAtual(alvoRoteiroId, localizacao.latitude, localizacao.longitude, horario)
                     sincronizarPontosPendentes()
+                    sincronizarEntregasPendentes()
                 }
             }
         }
@@ -173,6 +175,24 @@ class RastreamentoService : Service() {
                 dao.marcarSincronizado(ponto.id)
             } catch (erro: Exception) {
                 Log.w(TAG, "Falha ao sincronizar ponto ${ponto.id} do roteiro ${ponto.roteiroId}", erro)
+            }
+        }
+    }
+
+    /**
+     * Fila offline de confirmações de entrega: tenta reenviar cada uma que ainda não foi
+     * confirmada no servidor (por exemplo, porque o motorista marcou como entregue sem sinal —
+     * ver [RoteiroRepositorio.marcarEntregue]). Mesma lógica de tentativa independente da fila
+     * de pontos de GPS logo acima.
+     */
+    private suspend fun sincronizarEntregasPendentes() {
+        val dao = AppDatabase.obter(applicationContext).entregaPendenteDao()
+        for (entrega in dao.buscarPendentes()) {
+            try {
+                RoteiroRepositorio.confirmarEntregaNoServidor(entrega.viagemId, entrega.dataFim)
+                dao.remover(entrega.viagemId)
+            } catch (erro: Exception) {
+                Log.w(TAG, "Falha ao sincronizar confirmação de entrega da viagem ${entrega.viagemId}", erro)
             }
         }
     }

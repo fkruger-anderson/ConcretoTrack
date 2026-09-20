@@ -9,11 +9,14 @@ import androidx.room.RoomDatabase
  * A viagem em si agora mora no Firestore (para o saldo valer entre motoristas
  * diferentes); este banco local só guarda a fila offline de pontos de GPS.
  */
-@Database(entities = [PontoGps::class], version = 4, exportSchema = false)
+@Database(entities = [PontoGps::class, EntregaPendente::class], version = 5, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     /** DAO de acesso aos pontos de GPS gravados localmente. */
     abstract fun pontoGpsDao(): PontoGpsDao
+
+    /** DAO de acesso à fila local de confirmações de entrega pendentes de reenviar. */
+    abstract fun entregaPendenteDao(): EntregaPendenteDao
 
     companion object {
         @Volatile

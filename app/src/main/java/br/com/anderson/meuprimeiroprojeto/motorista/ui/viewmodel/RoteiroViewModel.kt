@@ -125,10 +125,21 @@ class RoteiroViewModel(application: Application) : AndroidViewModel(application)
         carregar(motoristaUid)
     }
 
-    /** Não espera confirmação do servidor — mesmo raciocínio de sempre. */
+    /**
+     * Confirma a entrega no servidor (transação — ver [RoteiroRepositorio.marcarEntregue]).
+     * Recarrega o roteiro de qualquer forma: se ficou na fila local, a viagem continua aparecendo
+     * como pendente até o reenvio automático confirmar de verdade.
+     */
     fun marcarEntregue(viagemId: String) {
-        RoteiroRepositorio.marcarEntregue(viagemId)
-        carregar(motoristaUid)
+        viewModelScope.launch {
+            val confirmado = RoteiroRepositorio.marcarEntregue(getApplication(), viagemId)
+            if (!confirmado) {
+                _estado.value = _estado.value?.copy(
+                    erro = Evento("Sem conexão agora. A confirmação de entrega será enviada automaticamente quando a conexão voltar")
+                )
+            }
+            carregar(motoristaUid)
+        }
     }
 
     /**

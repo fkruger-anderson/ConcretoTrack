@@ -1,10 +1,14 @@
 package br.com.anderson.meuprimeiroprojeto.motorista.backend
 
+import android.content.Context
 import android.util.Log
+import br.com.anderson.meuprimeiroprojeto.motorista.db.AppDatabase
+import br.com.anderson.meuprimeiroprojeto.motorista.db.EntregaPendente
 import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusRoteiro
 import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusViagem
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
+import kotlinx.coroutines.withTimeout
 
 /**
  * Monta e conduz o roteiro do motorista: adicionar/remover viagem (enquanto planejando),
@@ -16,6 +20,10 @@ import com.google.firebase.firestore.firestore
 object RoteiroRepositorio {
 
     private const val TAG = "RoteiroRepositorio"
+
+    // marcarEntregue precisa de conexão na hora (transação) — sem isso o motorista ficaria
+    // esperando pra sempre, então cortamos e guardamos a confirmação na fila local.
+    private const val TEMPO_LIMITE_MS = 10_000L
 
     private val db get() = Firebase.firestore
 
@@ -119,15 +127,57 @@ object RoteiroRepositorio {
         lote.commit()
     }
 
-    /** Marca uma entrega como concluída. Escrita direta, sem esperar confirmação do servidor. */
-    fun marcarEntregue(viagemId: String) {
-        db.collection("viagens").document(viagemId)
-            .update(
-                mapOf(
-                    "status" to StatusViagem.CONCLUIDA.name,
-                    "dataFim" to System.currentTimeMillis()
+    /**
+     * Marca uma entrega como concluída — diferente das outras escritas "cegas" deste objeto,
+     * esta precisa ler o status atual primeiro: se o gerente cancelou essa viagem remotamente
+     * enquanto o motorista estava offline, uma escrita cega poderia sobrescrever o cancelamento
+     * de volta pra CONCLUIDA (corrompendo o saldo em m³ do pedido, que o cancelamento já
+     * devolveu). Por isso usa uma transação, o que exige conexão na hora.
+     *
+     * Pra não perder a resiliência offline que o motorista precisa em campo, quando a transação
+     * não consegue completar a tempo (sem sinal agora), a confirmação é guardada localmente
+     * (fila em Room) e o [RastreamentoService][br.com.anderson.meuprimeiroprojeto.motorista.gps.RastreamentoService]
+     * tenta reenviar automaticamente a cada atualização de localização enquanto o roteiro
+     * estiver em rota — sem o motorista precisar fazer nada.
+     *
+     * Retorna true se confirmou agora mesmo no servidor, false se ficou na fila local pra
+     * reenviar depois (não é um erro — é esperado e tratado).
+     */
+    suspend fun marcarEntregue(context: Context, viagemId: String): Boolean {
+        val agora = System.currentTimeMillis()
+        return try {
+            withTimeout(TEMPO_LIMITE_MS) {
+                confirmarEntregaNoServidor(viagemId, agora)
+            }
+            AppDatabase.obter(context).entregaPendenteDao().remover(viagemId)
+            true
+        } catch (erro: Exception) {
+            AppDatabase.obter(context).entregaPendenteDao().inserir(EntregaPendente(viagemId, agora))
+            false
+        }
+    }
+
+    /**
+     * A escrita em si: só grava CONCLUIDA se a viagem ainda estiver EM_ROTA no servidor agora —
+     * se já não estiver mais (ex.: CANCELADA pelo gerente nesse meio-tempo), não faz nada, porque
+     * a viagem já foi resolvida por outro caminho. Chamada tanto por [marcarEntregue] quanto pela
+     * fila de retentativa do RastreamentoService.
+     */
+    suspend fun confirmarEntregaNoServidor(viagemId: String, dataFim: Long) {
+        val viagemRef = db.collection("viagens").document(viagemId)
+        db.runTransaction { transacao ->
+            val snapshot = transacao.get(viagemRef)
+            if (snapshot.getString("status") == StatusViagem.EM_ROTA.name) {
+                transacao.update(
+                    viagemRef,
+                    mapOf(
+                        "status" to StatusViagem.CONCLUIDA.name,
+                        "dataFim" to dataFim
+                    )
                 )
-            )
+            }
+            null
+        }.aguardar()
     }
 
     /**
