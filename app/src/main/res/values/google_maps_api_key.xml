@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Chave da API do Google Maps — mesma do módulo gerencial (mesmo projeto no Google Cloud).
+      Se o mapa aparecer em branco/cinza neste app, a chave pode estar restrita por nome de
+      pacote no Google Cloud Console só para br.com.anderson.meuprimeiroprojeto.gerencial —
+      nesse caso, adicione br.com.anderson.meuprimeiroprojeto às restrições da chave lá.
+    -->
+    <string name="google_maps_key" translatable="false">AIzaSyBvlgG0BmqOMxptONH55cfevIr-PTFWJ6M</string>
+</resources>
