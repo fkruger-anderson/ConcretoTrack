@@ -94,8 +94,14 @@ class DetalhesViagemViewModel(application: Application) : AndroidViewModel(appli
         carregar(viagemId)
     }
 
-    /** Calcula o km final a partir dos pontos locais e grava junto com status/dataFim, numa escrita só. */
+    /**
+     * Calcula o km final a partir dos pontos locais e grava junto com status/dataFim, numa
+     * escrita só. Guarda simétrica à de [escutarCancelamento]: se o gerente já cancelou a
+     * viagem remotamente antes deste toque chegar aqui, não faz nada — senão sobrescreveria o
+     * cancelamento com CONCLUIDA.
+     */
     fun confirmarEncerramento(viagemId: String) {
+        if (jaTratouEncerramento) return
         jaTratouEncerramento = true
         viewModelScope.launch {
             val km = PontoGpsRepositorio.calcularKmPercorridos(getApplication(), viagemId)
