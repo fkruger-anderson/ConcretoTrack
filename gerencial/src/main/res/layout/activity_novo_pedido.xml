@@ -106,6 +106,14 @@
             android:hint="@string/novo_pedido_hint_m3"
             android:inputType="numberDecimal" />
 
+        <EditText
+            android:id="@+id/editDistanciaKm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="@string/novo_pedido_hint_distancia_km"
+            android:inputType="numberDecimal" />
+
         <Button
             android:id="@+id/botaoDataEntrega"
             android:layout_width="match_parent"

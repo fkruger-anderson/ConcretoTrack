@@ -38,6 +38,7 @@ class NovoPedidoActivity : AppCompatActivity() {
     private lateinit var editCidade: EditText
     private lateinit var editUf: AutoCompleteTextView
     private lateinit var editQuantidadeM3: EditText
+    private lateinit var editDistanciaKm: EditText
     private lateinit var botaoDataEntrega: Button
     private lateinit var botaoSalvar: Button
     private lateinit var progresso: ProgressBar
@@ -60,6 +61,7 @@ class NovoPedidoActivity : AppCompatActivity() {
         editCidade = findViewById(R.id.editCidade)
         editUf = findViewById(R.id.editUf)
         editQuantidadeM3 = findViewById(R.id.editQuantidadeM3)
+        editDistanciaKm = findViewById(R.id.editDistanciaKm)
         botaoDataEntrega = findViewById(R.id.botaoDataEntrega)
         botaoSalvar = findViewById(R.id.botaoSalvar)
         progresso = findViewById(R.id.progresso)
@@ -80,6 +82,7 @@ class NovoPedidoActivity : AppCompatActivity() {
                 cidade = editCidade.text.toString().trim(),
                 ufDigitada = editUf.text.toString(),
                 quantidadeDigitada = editQuantidadeM3.text.toString(),
+                distanciaDigitada = editDistanciaKm.text.toString(),
                 dataEntrega = dataEntregaSelecionada
             )
         }
@@ -116,6 +119,7 @@ class NovoPedidoActivity : AppCompatActivity() {
         editDocumento.error = if (estado.erroDocumento) getString(R.string.novo_pedido_erro_documento) else null
         editNome.error = if (estado.erroNome) getString(R.string.novo_pedido_erro_nome) else null
         editQuantidadeM3.error = if (estado.erroQuantidade) getString(R.string.novo_pedido_erro_m3) else null
+        editDistanciaKm.error = if (estado.erroDistanciaKm) getString(R.string.novo_pedido_erro_distancia_km) else null
 
         val mensagemBanner = when {
             estado.erroEndereco -> getString(R.string.novo_pedido_erro_endereco)

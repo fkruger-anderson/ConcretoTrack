@@ -87,12 +87,14 @@
     <string name="novo_pedido_hint_cidade">Cidade</string>
     <string name="novo_pedido_hint_uf">UF</string>
     <string name="novo_pedido_hint_m3">Quantidade total (m³)</string>
+    <string name="novo_pedido_hint_distancia_km">Distância da usina até o cliente (km, ida)</string>
     <string name="novo_pedido_hint_data_entrega">Data de entrega</string>
     <string name="novo_pedido_botao_salvar">Salvar pedido</string>
     <string name="novo_pedido_erro_documento">CPF ou CNPJ inválido</string>
     <string name="novo_pedido_erro_nome">Informe o nome do destinatário</string>
     <string name="novo_pedido_erro_endereco">Preencha o endereço completo</string>
     <string name="novo_pedido_erro_m3">Informe uma quantidade maior que zero</string>
+    <string name="novo_pedido_erro_distancia_km">Informe uma distância maior que zero</string>
     <string name="novo_pedido_erro_data_entrega">Selecione a data de entrega</string>
     <string name="novo_pedido_erro_salvar">Não foi possível salvar o pedido. Verifique sua conexão</string>
     <string name="novo_pedido_sucesso">Pedido nº %1$d cadastrado</string>
