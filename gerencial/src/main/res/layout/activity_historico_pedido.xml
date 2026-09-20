@@ -23,6 +23,12 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp" />
 
+        <TextView
+            android:id="@+id/textKmTotal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp" />
+
         <Button
             android:id="@+id/botaoDataEntrega"
             android:layout_width="match_parent"

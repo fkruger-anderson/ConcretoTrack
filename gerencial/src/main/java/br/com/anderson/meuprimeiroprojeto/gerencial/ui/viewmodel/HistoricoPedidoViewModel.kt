@@ -26,6 +26,7 @@ data class HistoricoPedidoUiState(
     val saldo: Double = 0.0,
     val dataEntrega: Long = 0,
     val status: StatusPedido = StatusPedido.PENDENTE,
+    val totalKm: Double = 0.0,
     val viagens: List<Pair<String, ViagemRemota>> = emptyList(),
     val erroAoCarregar: Boolean = false,
     val resultadoCancelamento: Evento<ResultadoCancelamento>? = null,
@@ -62,6 +63,10 @@ class HistoricoPedidoViewModel : ViewModel() {
                 }
                 val status = PedidoRepositorio.calcularStatus(pedido.m3Alocados, pedido.quantidadeTotalM3, temViagemPendente)
 
+                val totalKm = viagens
+                    .filter { (_, viagem) -> viagem.status != StatusViagem.CANCELADA.name }
+                    .sumOf { (_, viagem) -> viagem.kmPercorridos ?: 0.0 }
+
                 _estado.value = HistoricoPedidoUiState(
                     pedidoId = pedidoId,
                     destinatarioNome = pedido.destinatarioNome,
@@ -70,6 +75,7 @@ class HistoricoPedidoViewModel : ViewModel() {
                     saldo = pedido.quantidadeTotalM3 - pedido.m3Alocados,
                     dataEntrega = pedido.dataEntrega,
                     status = status,
+                    totalKm = totalKm,
                     viagens = viagens
                 )
             } catch (erro: Exception) {

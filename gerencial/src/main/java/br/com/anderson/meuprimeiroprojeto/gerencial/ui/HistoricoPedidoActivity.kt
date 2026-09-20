@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView
 import br.com.anderson.meuprimeiroprojeto.gerencial.R
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.ViagemRemota
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusPedido
+import br.com.anderson.meuprimeiroprojeto.gerencial.formatarKm
 import br.com.anderson.meuprimeiroprojeto.gerencial.formatarM3
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.HistoricoPedidoUiState
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.HistoricoPedidoViewModel
@@ -39,6 +40,7 @@ class HistoricoPedidoActivity : AppCompatActivity() {
     private var pedidoId: Int = -1
     private lateinit var textNumero: TextView
     private lateinit var textProgresso: TextView
+    private lateinit var textKmTotal: TextView
     private lateinit var botaoDataEntrega: Button
     private lateinit var botaoAtribuirViagem: Button
     private lateinit var textListaVazia: TextView
@@ -57,6 +59,7 @@ class HistoricoPedidoActivity : AppCompatActivity() {
 
         textNumero = findViewById(R.id.textNumero)
         textProgresso = findViewById(R.id.textProgresso)
+        textKmTotal = findViewById(R.id.textKmTotal)
         botaoDataEntrega = findViewById(R.id.botaoDataEntrega)
         botaoAtribuirViagem = findViewById(R.id.botaoAtribuirViagem)
         textListaVazia = findViewById(R.id.textListaVazia)
@@ -95,6 +98,7 @@ class HistoricoPedidoActivity : AppCompatActivity() {
             formatarM3(estado.quantidadeTotalM3),
             formatarM3(estado.saldo)
         )
+        textKmTotal.text = getString(R.string.historico_km_total_formato, formatarKm(estado.totalKm))
         botaoDataEntrega.text = getString(
             R.string.home_data_entrega_formato, formatoData.format(Date(estado.dataEntrega))
         )
