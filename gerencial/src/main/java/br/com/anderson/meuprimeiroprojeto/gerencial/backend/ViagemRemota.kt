@@ -16,5 +16,6 @@ data class ViagemRemota(
     val dataCancelamento: Long? = null,
     val ultimaLatitude: Double? = null,
     val ultimaLongitude: Double? = null,
-    val kmPercorridos: Double? = null
+    val kmPercorridos: Double? = null,
+    val roteiroId: String? = null
 )

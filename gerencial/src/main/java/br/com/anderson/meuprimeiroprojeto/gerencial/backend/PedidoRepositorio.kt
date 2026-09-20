@@ -88,7 +88,8 @@ object PedidoRepositorio {
         uf: String,
         cep: String,
         quantidadeTotalM3: Double,
-        dataEntrega: Long
+        dataEntrega: Long,
+        distanciaDedicadaKm: Double
     ): Int {
         val contadorRef = db.collection("contadores").document("pedidos")
 
@@ -112,7 +113,8 @@ object PedidoRepositorio {
                     cep = cep,
                     quantidadeTotalM3 = quantidadeTotalM3,
                     m3Alocados = 0.0,
-                    dataEntrega = dataEntrega
+                    dataEntrega = dataEntrega,
+                    distanciaDedicadaKm = distanciaDedicadaKm
                 )
             )
             proximo

@@ -10,7 +10,8 @@ data class Pedido(
     val cidade: String,
     val uf: String,
     val cep: String,
-    val quantidadeTotalM3: Double
+    val quantidadeTotalM3: Double,
+    val distanciaDedicadaKm: Double
 ) {
     /** Endereço em uma linha, para mostrar na lista de viagens do motorista. */
     fun enderecoResumido(): String = "$rua, $numero - $bairro, $cidade/$uf"

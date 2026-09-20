@@ -26,7 +26,8 @@ object PedidoRepositorio {
             cidade = remoto.cidade,
             uf = remoto.uf,
             cep = remoto.cep,
-            quantidadeTotalM3 = remoto.quantidadeTotalM3
+            quantidadeTotalM3 = remoto.quantidadeTotalM3,
+            distanciaDedicadaKm = remoto.distanciaDedicadaKm
         )
     }
 }
