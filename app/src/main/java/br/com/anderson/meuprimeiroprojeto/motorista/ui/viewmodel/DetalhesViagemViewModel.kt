@@ -65,7 +65,7 @@ class DetalhesViagemViewModel(application: Application) : AndroidViewModel(appli
 
             val emRota = viagem.status == StatusViagem.EM_ROTA.name
             val pontos = if (emRota) {
-                AppDatabase.obter(getApplication()).pontoGpsDao().buscarPorViagem(viagemId)
+                AppDatabase.obter(getApplication()).pontoGpsDao().buscarPorRoteiro(viagemId)
             } else {
                 emptyList()
             }

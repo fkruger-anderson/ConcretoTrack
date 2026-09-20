@@ -6,19 +6,19 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/** Contagem de pontos de GPS gravados localmente (fila offline) e cálculo do km percorrido. */
+/** Cálculo do km percorrido a partir dos pontos de GPS gravados localmente. */
 object PontoGpsRepositorio {
 
     private const val RAIO_TERRA_METROS = 6_371_000.0
 
     /**
-     * Soma a distância (fórmula de Haversine) entre cada par de pontos consecutivos da viagem,
+     * Soma a distância (fórmula de Haversine) entre cada par de pontos consecutivos do roteiro,
      * usando os pontos já salvos localmente (Room) — não depende de terem sincronizado com o
-     * Firestore. Recalculado sob demanda: com um ponto a cada 10s, mesmo uma viagem de horas
-     * tem no máximo algumas centenas de pontos, então somar tudo de novo é instantâneo.
+     * Firestore. Recalculado sob demanda: com um ponto a cada 10s, mesmo um roteiro de horas tem
+     * no máximo algumas centenas de pontos, então somar tudo de novo é instantâneo.
      */
-    suspend fun calcularKmPercorridos(context: Context, viagemId: String): Double {
-        val pontos = AppDatabase.obter(context).pontoGpsDao().buscarPorViagem(viagemId)
+    suspend fun calcularKmPercorridos(context: Context, roteiroId: String): Double {
+        val pontos = AppDatabase.obter(context).pontoGpsDao().buscarPorRoteiro(roteiroId)
         if (pontos.size < 2) return 0.0
 
         var totalMetros = 0.0

@@ -36,35 +36,34 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 /**
- * Serviço em primeiro plano que grava pontos de GPS de uma ou mais viagens em rota ao mesmo
- * tempo — [viagensAtivas] guarda o conjunto de viagens sendo rastreadas agora. O GPS só é
- * ligado quando a primeira viagem entra no conjunto, e só é desligado quando o conjunto fica
- * vazio; entre isso, cada posição recebida grava um ponto para TODAS as viagens ativas.
+ * Serviço em primeiro plano que grava pontos de GPS do roteiro em rota. Só existe um roteiro
+ * ativo por motorista por vez, então (diferente da versão anterior deste serviço, que rastreava
+ * várias viagens simultâneas) volta a ser um único alvo — mais simples.
  */
 class RastreamentoService : Service() {
 
     companion object {
-        const val EXTRA_VIAGEM_ID = "viagem_id"
-        private const val ACTION_INICIAR = "br.com.anderson.meuprimeiroprojeto.INICIAR_VIAGEM"
-        private const val ACTION_ENCERRAR = "br.com.anderson.meuprimeiroprojeto.ENCERRAR_VIAGEM"
+        const val EXTRA_ROTEIRO_ID = "roteiro_id"
+        private const val ACTION_INICIAR = "br.com.anderson.meuprimeiroprojeto.INICIAR_ROTEIRO"
+        private const val ACTION_ENCERRAR = "br.com.anderson.meuprimeiroprojeto.ENCERRAR_ROTEIRO"
         private const val CANAL_ID = "rastreamento_viagem"
         private const val NOTIFICACAO_ID = 1001
         private const val INTERVALO_ATUALIZACAO_MS = 10_000L
         private const val TAG = "RastreamentoService"
 
-        /** Passa a rastrear esta viagem também; se já houver outra ativa, o GPS já está ligado. */
-        fun iniciar(context: Context, viagemId: String) {
+        /** Começa a rastrear este roteiro. */
+        fun iniciar(context: Context, roteiroId: String) {
             val intent = Intent(context, RastreamentoService::class.java)
                 .setAction(ACTION_INICIAR)
-                .putExtra(EXTRA_VIAGEM_ID, viagemId)
+                .putExtra(EXTRA_ROTEIRO_ID, roteiroId)
             ContextCompat.startForegroundService(context, intent)
         }
 
-        /** Para de rastrear esta viagem; o serviço só encerra de vez se não sobrar nenhuma outra ativa. */
-        fun encerrar(context: Context, viagemId: String) {
+        /** Para de rastrear este roteiro. */
+        fun encerrar(context: Context, roteiroId: String) {
             val intent = Intent(context, RastreamentoService::class.java)
                 .setAction(ACTION_ENCERRAR)
-                .putExtra(EXTRA_VIAGEM_ID, viagemId)
+                .putExtra(EXTRA_ROTEIRO_ID, roteiroId)
             context.startService(intent)
         }
     }
@@ -72,7 +71,7 @@ class RastreamentoService : Service() {
     private val escopo = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var clienteLocalizacao: FusedLocationProviderClient
     private var callbackLocalizacao: LocationCallback? = null
-    private val viagensAtivas = mutableSetOf<String>()
+    private var roteiroAtivo: String? = null
 
     /** Prepara o cliente de localização (FusedLocationProviderClient) quando o serviço é criado. */
     override fun onCreate() {
@@ -81,44 +80,38 @@ class RastreamentoService : Service() {
     }
 
     /**
-     * Adiciona ou remove uma viagem do conjunto de viagens ativas, conforme a `action` do Intent.
      * START_STICKY: se o sistema matar o processo por falta de memória, o Android tenta recriar
-     * o serviço (o Intent original pode vir nulo nesse caso — perde o conjunto em memória, mesmo
-     * comportamento que o serviço já tinha antes desta mudança).
+     * o serviço (o Intent original pode vir nulo nesse caso — perde o [roteiroAtivo] em memória;
+     * quem recupera isso é a tela de detalhe do roteiro, chamando [iniciar] de novo ao reabrir um
+     * roteiro que já está EM_ROTA).
      */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val viagemId = intent?.getStringExtra(EXTRA_VIAGEM_ID)
-        if (viagemId.isNullOrBlank()) {
-            if (viagensAtivas.isEmpty()) stopSelf()
+        val roteiroId = intent?.getStringExtra(EXTRA_ROTEIRO_ID)
+        if (roteiroId.isNullOrBlank()) {
+            if (roteiroAtivo == null) stopSelf()
             return START_NOT_STICKY
         }
 
         if (intent.action == ACTION_ENCERRAR) {
-            viagensAtivas.remove(viagemId)
-            if (viagensAtivas.isEmpty()) {
+            if (roteiroAtivo == roteiroId) {
+                roteiroAtivo = null
                 callbackLocalizacao?.let { clienteLocalizacao.removeLocationUpdates(it) }
                 stopSelf()
-                return START_NOT_STICKY
             }
-            // Ainda sobra outra viagem ativa: o rastreamento continua valendo, então o Android
-            // deve tentar recriar o serviço se ele for morto.
-            return START_STICKY
+            return START_NOT_STICKY
         }
 
-        val jaTinhaViagemAtiva = viagensAtivas.isNotEmpty()
-        viagensAtivas.add(viagemId)
+        roteiroAtivo = roteiroId
         criarCanalDeNotificacao()
         startForeground(NOTIFICACAO_ID, criarNotificacao(), ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
-        if (!jaTinhaViagemAtiva) {
-            iniciarAtualizacoesDeLocalizacao()
-        }
+        iniciarAtualizacoesDeLocalizacao()
         return START_STICKY
     }
 
     /**
      * Registra o callback do FusedLocationProviderClient para receber posições a cada
-     * [INTERVALO_ATUALIZACAO_MS]; cada posição recebida é gravada no Room para todas as
-     * viagens em [viagensAtivas] no momento, e depois dispara a sincronização da fila offline.
+     * [INTERVALO_ATUALIZACAO_MS]; cada posição recebida é gravada no Room e depois dispara a
+     * sincronização da fila offline e a atualização da posição atual no Firestore.
      */
     private fun iniciarAtualizacoesDeLocalizacao() {
         val temPermissao = ActivityCompat.checkSelfPermission(
@@ -129,25 +122,26 @@ class RastreamentoService : Service() {
             return
         }
 
+        // Se já havia um registro anterior (reinício do serviço), encerra antes de criar outro.
+        callbackLocalizacao?.let { clienteLocalizacao.removeLocationUpdates(it) }
+
+        val alvoRoteiroId = roteiroAtivo ?: return
         val pedido = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, INTERVALO_ATUALIZACAO_MS).build()
         val callback = object : LocationCallback() {
-            /** Grava a posição recebida no Room e atualiza o Firestore, para cada viagem ativa no momento. */
+            /** Grava a posição recebida no Room e atualiza o Firestore. */
             override fun onLocationResult(resultado: LocationResult) {
                 val localizacao = resultado.lastLocation ?: return
                 val horario = System.currentTimeMillis()
-                val idsAtivosAgora = viagensAtivas.toSet()
                 escopo.launch {
-                    for (idViagem in idsAtivosAgora) {
-                        AppDatabase.obter(applicationContext).pontoGpsDao().inserir(
-                            PontoGps(
-                                viagemId = idViagem,
-                                latitude = localizacao.latitude,
-                                longitude = localizacao.longitude,
-                                horario = horario
-                            )
+                    AppDatabase.obter(applicationContext).pontoGpsDao().inserir(
+                        PontoGps(
+                            roteiroId = alvoRoteiroId,
+                            latitude = localizacao.latitude,
+                            longitude = localizacao.longitude,
+                            horario = horario
                         )
-                        atualizarPosicaoAtual(idViagem, localizacao.latitude, localizacao.longitude, horario)
-                    }
+                    )
+                    atualizarPosicaoAtual(alvoRoteiroId, localizacao.latitude, localizacao.longitude, horario)
                     sincronizarPontosPendentes()
                 }
             }
@@ -166,7 +160,7 @@ class RastreamentoService : Service() {
         val dao = AppDatabase.obter(applicationContext).pontoGpsDao()
         for (ponto in dao.buscarPendentes()) {
             try {
-                Firebase.firestore.collection("viagens").document(ponto.viagemId)
+                Firebase.firestore.collection("roteiros").document(ponto.roteiroId)
                     .collection("pontosGps").document("ponto_${ponto.id}")
                     .set(
                         mapOf(
@@ -178,20 +172,20 @@ class RastreamentoService : Service() {
                     .aguardar()
                 dao.marcarSincronizado(ponto.id)
             } catch (erro: Exception) {
-                Log.w(TAG, "Falha ao sincronizar ponto ${ponto.id} da viagem ${ponto.viagemId}", erro)
+                Log.w(TAG, "Falha ao sincronizar ponto ${ponto.id} do roteiro ${ponto.roteiroId}", erro)
             }
         }
     }
 
     /**
-     * Atualiza a posição atual no próprio documento da viagem — é o que o mapa em tempo real
+     * Atualiza a posição atual no próprio documento do roteiro — é o que o mapa em tempo real
      * do app gerencial escuta. Separado da fila offline de propósito: se falhar por falta de
      * conexão não tem problema guardar pra depois, a próxima atualização (10s) já traz uma
      * posição mais nova mesmo.
      */
-    private suspend fun atualizarPosicaoAtual(viagemId: String, latitude: Double, longitude: Double, horario: Long) {
+    private suspend fun atualizarPosicaoAtual(roteiroId: String, latitude: Double, longitude: Double, horario: Long) {
         try {
-            Firebase.firestore.collection("viagens").document(viagemId)
+            Firebase.firestore.collection("roteiros").document(roteiroId)
                 .update(
                     mapOf(
                         "ultimaLatitude" to latitude,
@@ -205,6 +199,7 @@ class RastreamentoService : Service() {
         }
     }
 
+    /** Canal exigido a partir do Android 8 para mostrar a notificação fixa do serviço. */
     private fun criarCanalDeNotificacao() {
         val gerenciador = getSystemService(NotificationManager::class.java)
         val canal = NotificationChannel(
@@ -213,6 +208,7 @@ class RastreamentoService : Service() {
         gerenciador.createNotificationChannel(canal)
     }
 
+    /** Notificação fixa (ongoing) que o foreground service precisa manter visível enquanto roda. */
     private fun criarNotificacao(): Notification {
         val intentAbrirApp = PendingIntent.getActivity(
             this, 0, Intent(this, MotoristaHomeActivity::class.java), PendingIntent.FLAG_IMMUTABLE
@@ -226,11 +222,13 @@ class RastreamentoService : Service() {
             .build()
     }
 
+    /** Para de receber localizações e cancela as coroutines pendentes ao destruir o serviço. */
     override fun onDestroy() {
         super.onDestroy()
         callbackLocalizacao?.let { clienteLocalizacao.removeLocationUpdates(it) }
         escopo.cancel()
     }
 
+    /** Serviço não usa binding (é iniciado com startService/startForegroundService, não bind). */
     override fun onBind(intent: Intent?): IBinder? = null
 }

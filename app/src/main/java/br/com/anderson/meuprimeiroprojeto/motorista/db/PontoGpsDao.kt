@@ -12,9 +12,9 @@ interface PontoGpsDao {
     @Insert
     suspend fun inserir(ponto: PontoGps)
 
-    /** Usado depois (mapa/histórico) para desenhar o trajeto da viagem. */
-    @Query("SELECT * FROM pontos_gps WHERE viagemId = :viagemId ORDER BY horario")
-    suspend fun buscarPorViagem(viagemId: String): List<PontoGps>
+    /** Usado depois (mapa/histórico) para desenhar o trajeto do roteiro. */
+    @Query("SELECT * FROM pontos_gps WHERE roteiroId = :roteiroId ORDER BY horario")
+    suspend fun buscarPorRoteiro(roteiroId: String): List<PontoGps>
 
     /** A fila offline: pontos gravados localmente que ainda não subiram para o Firestore. */
     @Query("SELECT * FROM pontos_gps WHERE sincronizado = 0")
