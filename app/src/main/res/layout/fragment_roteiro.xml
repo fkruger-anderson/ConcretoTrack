@@ -10,6 +10,46 @@
         android:layout_height="wrap_content"
         android:padding="24dp"
         android:gravity="center"
-        android:text="@string/roteiro_vazio" />
+        android:text="@string/roteiro_vazio"
+        android:visibility="gone" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerViagensRoteiro"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipToPadding="false"
+        android:padding="8dp"
+        android:visibility="gone" />
+
+    <Button
+        android:id="@+id/botaoIniciarRoteiro"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:text="@string/roteiro_botao_iniciar"
+        android:visibility="gone" />
+
+    <FrameLayout
+        android:id="@+id/containerMapa"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone">
+
+        <fragment
+            android:id="@+id/mapa"
+            android:name="com.google.android.gms.maps.SupportMapFragment"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </FrameLayout>
+
+    <Button
+        android:id="@+id/botaoEncerrarRoteiro"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:text="@string/roteiro_botao_encerrar"
+        android:visibility="gone" />
 
 </LinearLayout>

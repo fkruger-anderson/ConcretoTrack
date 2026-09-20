@@ -38,4 +38,13 @@
     <string name="nav_viagens">Viagens</string>
     <string name="nav_roteiro">Roteiro</string>
     <string name="roteiro_vazio">Nenhum roteiro em andamento. Toque numa viagem em Viagens para começar a montar um.</string>
+    <string name="roteiro_botao_iniciar">Iniciar roteiro</string>
+    <string name="roteiro_botao_encerrar">Encerrar roteiro</string>
+    <string name="roteiro_botao_marcar_entregue">Marcar como entregue</string>
+    <string name="roteiro_confirmar_iniciar">Iniciar o roteiro?</string>
+    <string name="roteiro_confirmar_encerrar">Encerrar o roteiro? Só é possível se todas as entregas já estiverem resolvidas</string>
+    <string name="roteiro_encerrado_sucesso">Roteiro encerrado</string>
+    <string name="roteiro_item_pendente">Pendente</string>
+    <string name="roteiro_item_entregue">Entregue</string>
+    <string name="roteiro_item_cancelada">Cancelada</string>
 </resources>
