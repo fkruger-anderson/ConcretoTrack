@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import br.com.anderson.meuprimeiroprojeto.gerencial.R
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.ViagemRemota
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusViagem
+import br.com.anderson.meuprimeiroprojeto.gerencial.formatarKm
 import br.com.anderson.meuprimeiroprojeto.gerencial.formatarM3
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -30,6 +31,7 @@ class ViagemAdapter(
         val textMotorista: TextView = view.findViewById(R.id.textMotorista)
         val textStatus: TextView = view.findViewById(R.id.textStatus)
         val textDetalhes: TextView = view.findViewById(R.id.textDetalhes)
+        val textKm: TextView = view.findViewById(R.id.textKm)
         val botaoCancelar: Button = view.findViewById(R.id.botaoCancelar)
     }
 
@@ -81,6 +83,14 @@ class ViagemAdapter(
                     fim
                 )
             }
+        }
+
+        val km = item.kmPercorridos
+        if (km != null) {
+            holder.textKm.text = contexto.getString(R.string.viagem_km_formato, formatarKm(km))
+            holder.textKm.visibility = View.VISIBLE
+        } else {
+            holder.textKm.visibility = View.GONE
         }
 
         val podeCancelar = item.status == StatusViagem.ATRIBUIDA.name || item.status == StatusViagem.EM_ROTA.name

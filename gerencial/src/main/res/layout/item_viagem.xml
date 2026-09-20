@@ -29,6 +29,14 @@
         android:textStyle="italic"
         tools:text="6 m³ · início 18/09/2026 14:05 · fim 18/09/2026 14:52" />
 
+    <TextView
+        android:id="@+id/textKm"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:visibility="gone"
+        tools:text="18,4 km percorridos" />
+
     <Button
         android:id="@+id/botaoCancelar"
         android:layout_width="wrap_content"

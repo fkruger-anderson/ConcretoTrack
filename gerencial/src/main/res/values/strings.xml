@@ -119,6 +119,7 @@
     <string name="viagem_detalhes_formato">%1$s m³ · início %2$s%3$s</string>
     <string name="viagem_detalhes_atribuida_formato">%1$s m³ · atribuída em %2$s</string>
     <string name="viagem_detalhes_cancelada_formato">%1$s m³ · motivo: %2$s</string>
+    <string name="viagem_km_formato">%1$s km percorridos</string>
     <string name="viagem_botao_cancelar">Cancelar viagem</string>
     <string name="viagem_fim_formato"> · fim %1$s</string>
     <string name="viagem_status_atribuida">Atribuída (motorista ainda não iniciou)</string>
