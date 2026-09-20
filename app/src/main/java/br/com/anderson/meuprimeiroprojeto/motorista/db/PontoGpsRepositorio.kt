@@ -31,6 +31,11 @@ object PontoGpsRepositorio {
         return totalMetros / 1000.0
     }
 
+    /** Pontos de GPS do roteiro em ordem, pra desenhar o trajeto no mapa. */
+    suspend fun buscarPontos(context: Context, roteiroId: String): List<PontoGps> {
+        return AppDatabase.obter(context).pontoGpsDao().buscarPorRoteiro(roteiroId)
+    }
+
     /** Distância em linha reta entre duas coordenadas na superfície da Terra (fórmula de Haversine). */
     private fun distanciaEmMetros(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
         val dLat = Math.toRadians(lat2 - lat1)

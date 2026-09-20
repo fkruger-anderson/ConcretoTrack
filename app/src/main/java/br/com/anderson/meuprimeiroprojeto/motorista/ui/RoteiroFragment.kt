@@ -114,6 +114,13 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         desenharTrajeto(estadoAtual)
     }
 
+    /** Solta a referência do mapa e o adapter da lista; a view do fragment está sendo destruída. */
+    override fun onDestroyView() {
+        super.onDestroyView()
+        mapa = null
+        recyclerViagensRoteiro.adapter = null
+    }
+
     private fun exibirEstado(estado: RoteiroUiState) {
         estadoAtual = estado
         if (!estado.carregado) return

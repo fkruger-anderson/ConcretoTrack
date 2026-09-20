@@ -131,7 +131,7 @@ class DetalhesViagemActivity : AppCompatActivity() {
                 val roteiroId = estadoAtual.roteiroId ?: return
                 viewModel.removerDoRoteiro(viagemId, roteiroId)
             }
-            AcaoViagem.MARCAR_ENTREGUE -> viewModel.marcarEntregue(applicationContext, viagemId)
+            AcaoViagem.MARCAR_ENTREGUE -> viewModel.marcarEntregue(viagemId)
             AcaoViagem.NENHUMA -> {}
         }
     }

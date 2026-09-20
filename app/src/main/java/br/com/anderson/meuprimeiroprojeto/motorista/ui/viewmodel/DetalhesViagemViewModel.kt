@@ -1,10 +1,11 @@
 package br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel
 
-import android.content.Context
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import br.com.anderson.meuprimeiroprojeto.R
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.PedidoRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.RoteiroRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.ViagemRemota
@@ -41,7 +42,7 @@ data class DetalhesViagemUiState(
  * Carrega os dados da viagem/pedido e decide qual ação o botão oferece — ver [AcaoViagem]. Sem
  * mapa/Room aqui: o trajeto ao vivo e o cálculo de km vivem na aba Roteiro agora.
  */
-class DetalhesViagemViewModel : ViewModel() {
+class DetalhesViagemViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         // Adicionar/remover do roteiro precisa de conexão na hora (lê e valida o roteiro no
@@ -139,9 +140,9 @@ class DetalhesViagemViewModel : ViewModel() {
             } catch (erro: RoteiroRepositorio.RoteiroJaIniciadoException) {
                 _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento(erro.message ?: ""))
             } catch (erro: TimeoutCancellationException) {
-                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento("Sem conexão. Tente de novo"))
+                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento(getApplication<Application>().getString(R.string.erro_sem_conexao_tentar_novo)))
             } catch (erro: Exception) {
-                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento("Sem conexão. Tente de novo"))
+                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento(getApplication<Application>().getString(R.string.erro_sem_conexao_tentar_novo)))
             }
         }
     }
@@ -157,23 +158,23 @@ class DetalhesViagemViewModel : ViewModel() {
             } catch (erro: RoteiroRepositorio.RoteiroJaIniciadoException) {
                 _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento(erro.message ?: ""))
             } catch (erro: TimeoutCancellationException) {
-                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento("Sem conexão. Tente de novo"))
+                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento(getApplication<Application>().getString(R.string.erro_sem_conexao_tentar_novo)))
             } catch (erro: Exception) {
-                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento("Sem conexão. Tente de novo"))
+                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento(getApplication<Application>().getString(R.string.erro_sem_conexao_tentar_novo)))
             }
         }
     }
 
     /** Confirma a entrega no servidor (transação — ver [RoteiroRepositorio.marcarEntregue]). */
-    fun marcarEntregue(context: Context, viagemId: String) {
+    fun marcarEntregue(viagemId: String) {
         viewModelScope.launch {
-            val confirmado = RoteiroRepositorio.marcarEntregue(context, viagemId)
+            val confirmado = RoteiroRepositorio.marcarEntregue(getApplication(), viagemId)
             _estado.value = if (confirmado) {
                 _estado.value?.copy(acaoConcluida = Evento(Unit))
             } else {
                 _estado.value?.copy(
                     acaoConcluida = Evento(Unit),
-                    erroAcao = Evento("Sem conexão agora. A confirmação de entrega será enviada automaticamente quando a conexão voltar")
+                    erroAcao = Evento(getApplication<Application>().getString(R.string.info_entrega_enfileirada))
                 )
             }
         }

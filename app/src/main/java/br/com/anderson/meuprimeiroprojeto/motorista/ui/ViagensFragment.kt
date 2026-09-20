@@ -68,4 +68,10 @@ class ViagensFragment : Fragment(R.layout.fragment_viagens) {
             recyclerViagens.visibility = if (listaVazia) View.GONE else View.VISIBLE
         }
     }
+
+    /** Solta o adapter da lista; a view do fragment está sendo destruída. */
+    override fun onDestroyView() {
+        super.onDestroyView()
+        recyclerViagens.adapter = null
+    }
 }

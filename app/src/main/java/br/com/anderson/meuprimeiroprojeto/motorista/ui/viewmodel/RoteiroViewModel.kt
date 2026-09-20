@@ -5,11 +5,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import br.com.anderson.meuprimeiroprojeto.R
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.PedidoRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.RoteiroRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.ViagemRemota
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.ViagemRepositorio
-import br.com.anderson.meuprimeiroprojeto.motorista.db.AppDatabase
 import br.com.anderson.meuprimeiroprojeto.motorista.db.PontoGps
 import br.com.anderson.meuprimeiroprojeto.motorista.db.PontoGpsRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusRoteiro
@@ -85,7 +85,7 @@ class RoteiroViewModel(application: Application) : AndroidViewModel(application)
 
             val emRota = roteiro.status == StatusRoteiro.EM_ROTA.name
             val pontos = if (emRota) {
-                AppDatabase.obter(getApplication()).pontoGpsDao().buscarPorRoteiro(roteiroId)
+                PontoGpsRepositorio.buscarPontos(getApplication(), roteiroId)
             } else {
                 emptyList()
             }
@@ -135,7 +135,7 @@ class RoteiroViewModel(application: Application) : AndroidViewModel(application)
             val confirmado = RoteiroRepositorio.marcarEntregue(getApplication(), viagemId)
             if (!confirmado) {
                 _estado.value = _estado.value?.copy(
-                    erro = Evento("Sem conexão agora. A confirmação de entrega será enviada automaticamente quando a conexão voltar")
+                    erro = Evento(getApplication<Application>().getString(R.string.info_entrega_enfileirada))
                 )
             }
             carregar(motoristaUid)
@@ -171,12 +171,12 @@ class RoteiroViewModel(application: Application) : AndroidViewModel(application)
             } catch (erro: TimeoutCancellationException) {
                 _estado.value = _estado.value?.copy(
                     carregando = false,
-                    erro = Evento("Sem conexão. Tente encerrar de novo")
+                    erro = Evento(getApplication<Application>().getString(R.string.erro_sem_conexao_encerrar))
                 )
             } catch (erro: Exception) {
                 _estado.value = _estado.value?.copy(
                     carregando = false,
-                    erro = Evento("Sem conexão. Tente encerrar de novo")
+                    erro = Evento(getApplication<Application>().getString(R.string.erro_sem_conexao_encerrar))
                 )
             }
         }
