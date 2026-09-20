@@ -1,6 +1,7 @@
 package br.com.anderson.meuprimeiroprojeto.gerencial.ui
 
 import android.app.AlertDialog
+import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -14,10 +15,15 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import br.com.anderson.meuprimeiroprojeto.gerencial.R
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.ViagemRemota
+import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusPedido
 import br.com.anderson.meuprimeiroprojeto.gerencial.formatarM3
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.HistoricoPedidoUiState
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.HistoricoPedidoViewModel
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.ResultadoCancelamento
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 /** Histórico de viagens de um pedido: quem levou, quanto, quando, e como terminou. */
 class HistoricoPedidoActivity : AppCompatActivity() {
@@ -28,10 +34,12 @@ class HistoricoPedidoActivity : AppCompatActivity() {
     }
 
     private val viewModel: HistoricoPedidoViewModel by viewModels()
+    private val formatoData = SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR"))
 
     private var pedidoId: Int = -1
     private lateinit var textNumero: TextView
     private lateinit var textProgresso: TextView
+    private lateinit var botaoDataEntrega: Button
     private lateinit var botaoAtribuirViagem: Button
     private lateinit var textListaVazia: TextView
     private lateinit var recyclerViagens: RecyclerView
@@ -49,11 +57,13 @@ class HistoricoPedidoActivity : AppCompatActivity() {
 
         textNumero = findViewById(R.id.textNumero)
         textProgresso = findViewById(R.id.textProgresso)
+        botaoDataEntrega = findViewById(R.id.botaoDataEntrega)
         botaoAtribuirViagem = findViewById(R.id.botaoAtribuirViagem)
         textListaVazia = findViewById(R.id.textListaVazia)
         recyclerViagens = findViewById(R.id.recyclerViagens)
         recyclerViagens.layoutManager = LinearLayoutManager(this)
 
+        botaoDataEntrega.setOnClickListener { abrirSeletorDeDataEntrega() }
         botaoAtribuirViagem.setOnClickListener {
             val intent = Intent(this, AtribuirViagemActivity::class.java)
                 .putExtra(AtribuirViagemActivity.EXTRA_PEDIDO_ID, pedidoId)
@@ -85,6 +95,11 @@ class HistoricoPedidoActivity : AppCompatActivity() {
             formatarM3(estado.quantidadeTotalM3),
             formatarM3(estado.saldo)
         )
+        botaoDataEntrega.text = getString(
+            R.string.home_data_entrega_formato, formatoData.format(Date(estado.dataEntrega))
+        )
+        // Pedido concluído não pode mais ter a data de entrega alterada.
+        botaoDataEntrega.isEnabled = estado.status != StatusPedido.CONCLUIDO
         botaoAtribuirViagem.visibility = if (estado.saldo > 0.0) View.VISIBLE else View.GONE
 
         if (estado.erroAoCarregar) {
@@ -118,6 +133,31 @@ class HistoricoPedidoActivity : AppCompatActivity() {
                     Toast.makeText(this, R.string.cancelar_viagem_erro_generico, Toast.LENGTH_LONG).show()
             }
         }
+
+        estado.erroAtualizarDataEntrega?.getConteudoSeNaoTratado()?.let {
+            Toast.makeText(this, R.string.historico_erro_atualizar_data_entrega, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /** Abre o calendário do Android já na data atual do pedido, e salva a escolha ao confirmar. */
+    private fun abrirSeletorDeDataEntrega() {
+        val calendario = Calendar.getInstance().apply {
+            timeInMillis = viewModel.estado.value?.dataEntrega ?: timeInMillis
+        }
+
+        DatePickerDialog(
+            this,
+            { _, ano, mes, dia ->
+                val escolhida = Calendar.getInstance().apply {
+                    set(ano, mes, dia, 0, 0, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                viewModel.atualizarDataEntrega(pedidoId, escolhida.timeInMillis)
+            },
+            calendario.get(Calendar.YEAR),
+            calendario.get(Calendar.MONTH),
+            calendario.get(Calendar.DAY_OF_MONTH)
+        ).show()
     }
 
     /** Pede o motivo do cancelamento num diálogo e só chama a ViewModel se o motivo não for vazio. */

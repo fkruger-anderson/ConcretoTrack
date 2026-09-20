@@ -25,16 +25,26 @@ object PedidoRepositorio {
         }.sortedBy { it.second.dataEntrega }
 
         return pedidos.map { (id, remoto) ->
-            val saldo = remoto.quantidadeTotalM3 - remoto.m3Alocados
-            val status = when {
-                remoto.m3Alocados <= 0.0 -> StatusPedido.PENDENTE
-                saldo > 0.0 -> StatusPedido.EM_ANDAMENTO
-                temViagemPendente(id) -> StatusPedido.EM_ANDAMENTO
-                else -> StatusPedido.CONCLUIDO
-            }
+            val status = calcularStatus(remoto.m3Alocados, remoto.quantidadeTotalM3, temViagemPendente(id))
             PedidoComStatus(
                 id, remoto.destinatarioNome, remoto.quantidadeTotalM3, remoto.m3Alocados, status, remoto.dataEntrega
             )
+        }
+    }
+
+    /**
+     * Regra de [StatusPedido]: pendente (nada alocado), em andamento (há saldo ou viagem
+     * atribuída/em rota pendente), concluído (saldo zero e nenhuma viagem pendente). Extraído
+     * à parte pra telas que já têm a lista de viagens em mãos (ex.: histórico do pedido) não
+     * precisarem de outra consulta ao Firestore só pra saber se há viagem pendente.
+     */
+    fun calcularStatus(m3Alocados: Double, quantidadeTotalM3: Double, temViagemPendente: Boolean): StatusPedido {
+        val saldo = quantidadeTotalM3 - m3Alocados
+        return when {
+            m3Alocados <= 0.0 -> StatusPedido.PENDENTE
+            saldo > 0.0 -> StatusPedido.EM_ANDAMENTO
+            temViagemPendente -> StatusPedido.EM_ANDAMENTO
+            else -> StatusPedido.CONCLUIDO
         }
     }
 
@@ -42,6 +52,13 @@ object PedidoRepositorio {
     suspend fun buscarPorId(id: Int): PedidoRemoto? {
         val documento = db.collection("pedidos").document(id.toString()).get().aguardar()
         return documento.toObject(PedidoRemoto::class.java)
+    }
+
+    /** Corrige a data de entrega de um pedido já cadastrado, sem mexer em mais nada dele. */
+    suspend fun atualizarDataEntrega(pedidoId: Int, novaData: Long) {
+        db.collection("pedidos").document(pedidoId.toString())
+            .update("dataEntrega", novaData)
+            .aguardar()
     }
 
     /** Só é chamado quando o saldo já está zerado, pra decidir entre "em andamento" e "concluído". */

@@ -112,6 +112,7 @@
     <string name="historico_progresso_formato">%1$s de %2$s m³ alocados (restam %3$s)</string>
     <string name="historico_lista_vazia">Nenhuma viagem para este pedido ainda</string>
     <string name="historico_erro_carregar">Não foi possível carregar o histórico. Verifique sua conexão</string>
+    <string name="historico_erro_atualizar_data_entrega">Não foi possível atualizar a data de entrega. Verifique sua conexão</string>
     <string name="cancelar_viagem_titulo">Cancelar viagem</string>
     <string name="cancelar_viagem_hint_motivo">Motivo do cancelamento</string>
     <string name="cancelar_viagem_confirmar">Confirmar</string>

@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.PedidoRepositorio
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.ViagemRemota
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.ViagemRepositorio
+import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusPedido
+import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusViagem
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
@@ -22,9 +24,12 @@ data class HistoricoPedidoUiState(
     val m3Alocados: Double = 0.0,
     val quantidadeTotalM3: Double = 0.0,
     val saldo: Double = 0.0,
+    val dataEntrega: Long = 0,
+    val status: StatusPedido = StatusPedido.PENDENTE,
     val viagens: List<Pair<String, ViagemRemota>> = emptyList(),
     val erroAoCarregar: Boolean = false,
-    val resultadoCancelamento: Evento<ResultadoCancelamento>? = null
+    val resultadoCancelamento: Evento<ResultadoCancelamento>? = null,
+    val erroAtualizarDataEntrega: Evento<Unit>? = null
 )
 
 /** Histórico de viagens de um pedido: carrega o progresso do saldo e permite cancelar viagens. */
@@ -50,12 +55,21 @@ class HistoricoPedidoViewModel : ViewModel() {
                 }
 
                 val viagens = ViagemRepositorio.listarPorPedido(pedidoId)
+                // Reaproveita a lista de viagens já carregada pra saber se há alguma pendente,
+                // em vez de fazer outra consulta ao Firestore (como PedidoRepositorio.listarComStatus faz).
+                val temViagemPendente = viagens.any { (_, viagem) ->
+                    viagem.status == StatusViagem.ATRIBUIDA.name || viagem.status == StatusViagem.EM_ROTA.name
+                }
+                val status = PedidoRepositorio.calcularStatus(pedido.m3Alocados, pedido.quantidadeTotalM3, temViagemPendente)
+
                 _estado.value = HistoricoPedidoUiState(
                     pedidoId = pedidoId,
                     destinatarioNome = pedido.destinatarioNome,
                     m3Alocados = pedido.m3Alocados,
                     quantidadeTotalM3 = pedido.quantidadeTotalM3,
                     saldo = pedido.quantidadeTotalM3 - pedido.m3Alocados,
+                    dataEntrega = pedido.dataEntrega,
+                    status = status,
                     viagens = viagens
                 )
             } catch (erro: Exception) {
@@ -85,6 +99,24 @@ class HistoricoPedidoViewModel : ViewModel() {
                 _estado.value = _estado.value?.copy(resultadoCancelamento = Evento(ResultadoCancelamento.ERRO_GENERICO))
             } catch (erro: Exception) {
                 _estado.value = _estado.value?.copy(resultadoCancelamento = Evento(ResultadoCancelamento.ERRO_GENERICO))
+            }
+        }
+    }
+
+    /**
+     * Corrige a data de entrega e recarrega a tela pra mostrar a data nova já formatada. Pedido
+     * concluído não pode mais ter a data alterada — o botão já fica desabilitado na tela, mas a
+     * checagem aqui também evita a chamada caso o estado esteja desatualizado.
+     */
+    fun atualizarDataEntrega(pedidoId: Int, novaData: Long) {
+        if (_estado.value?.status == StatusPedido.CONCLUIDO) return
+
+        viewModelScope.launch {
+            try {
+                PedidoRepositorio.atualizarDataEntrega(pedidoId, novaData)
+                carregar(pedidoId)
+            } catch (erro: Exception) {
+                _estado.value = _estado.value?.copy(erroAtualizarDataEntrega = Evento(Unit))
             }
         }
     }
