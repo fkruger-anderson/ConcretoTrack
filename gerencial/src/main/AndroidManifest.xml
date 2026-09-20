@@ -34,7 +34,7 @@
             android:name=".ui.HistoricoPedidoActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.RotaViagemActivity"
+            android:name=".ui.DetalhesRoteiroActivity"
             android:exported="false" />
         <activity
             android:name=".ui.CadastroMotoristaActivity"

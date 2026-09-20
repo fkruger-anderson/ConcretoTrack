@@ -23,7 +23,7 @@ import java.util.Locale
 class ViagemAdapter(
     private val itens: List<Pair<String, ViagemRemota>>,
     private val aoCancelar: (viagemId: String, viagem: ViagemRemota) -> Unit,
-    private val aoVerRota: (viagemId: String) -> Unit
+    private val aoVerRota: (viagemId: String, roteiroId: String) -> Unit
 ) : RecyclerView.Adapter<ViagemAdapter.ViewHolder>() {
 
     /** Referências das Views de um item da lista, encontradas uma única vez (evita findViewById repetido). */
@@ -97,10 +97,11 @@ class ViagemAdapter(
         holder.botaoCancelar.visibility = if (podeCancelar) View.VISIBLE else View.GONE
         holder.botaoCancelar.setOnClickListener { aoCancelar(viagemId, item) }
 
-        // Só tem rota pra mostrar se o motorista chegou a iniciar o trânsito.
-        val temRota = item.dataInicio != null
-        holder.itemView.isClickable = temRota
-        holder.itemView.setOnClickListener { if (temRota) aoVerRota(viagemId) }
+        val roteiroId = item.roteiroId
+        holder.itemView.isClickable = roteiroId != null
+        holder.itemView.setOnClickListener {
+            if (roteiroId != null) aoVerRota(viagemId, roteiroId)
+        }
     }
 
     /** Quantidade de itens da lista, exigido pelo RecyclerView pra saber quanto rolar. */

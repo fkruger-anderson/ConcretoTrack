@@ -114,9 +114,10 @@ class HistoricoPedidoActivity : AppCompatActivity() {
             recyclerViagens.adapter = ViagemAdapter(
                 estado.viagens,
                 aoCancelar = { viagemId, viagem -> confirmarCancelamento(viagemId, viagem) },
-                aoVerRota = { viagemId ->
-                    val intent = Intent(this, RotaViagemActivity::class.java)
-                        .putExtra(RotaViagemActivity.EXTRA_VIAGEM_ID, viagemId)
+                aoVerRota = { viagemId, roteiroId ->
+                    val intent = Intent(this, DetalhesRoteiroActivity::class.java)
+                        .putExtra(DetalhesRoteiroActivity.EXTRA_ROTEIRO_ID, roteiroId)
+                        .putExtra(DetalhesRoteiroActivity.EXTRA_VIAGEM_DESTACADA_ID, viagemId)
                     startActivity(intent)
                 }
             )

@@ -5,11 +5,12 @@ import android.view.View
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import br.com.anderson.meuprimeiroprojeto.gerencial.R
 import br.com.anderson.meuprimeiroprojeto.gerencial.formatarKm
-import br.com.anderson.meuprimeiroprojeto.gerencial.formatarM3
-import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.RotaViagemUiState
-import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.RotaViagemViewModel
+import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.DetalhesRoteiroUiState
+import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.DetalhesRoteiroViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -23,75 +24,81 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** Desenha no mapa o trajeto (pontos de GPS) que o motorista percorreu numa viagem. */
-class RotaViagemActivity : AppCompatActivity(), OnMapReadyCallback {
+/** Detalhe de um roteiro: mapa com o trajeto inteiro e a tabela de rateio de km por pedido. */
+class DetalhesRoteiroActivity : AppCompatActivity(), OnMapReadyCallback {
 
     companion object {
-        /** Chave do Intent extra: id da viagem cujo trajeto será desenhado. */
-        const val EXTRA_VIAGEM_ID = "viagem_id"
+        /** Chave do Intent extra: id do roteiro a ser mostrado. */
+        const val EXTRA_ROTEIRO_ID = "roteiro_id"
+        /** Chave do Intent extra, opcional: viagem a destacar na tabela (quando veio de um clique específico). */
+        const val EXTRA_VIAGEM_DESTACADA_ID = "viagem_destacada_id"
         private const val PADDING_LIMITES_PX = 120
     }
 
-    private val viewModel: RotaViagemViewModel by viewModels()
+    private val viewModel: DetalhesRoteiroViewModel by viewModels()
 
     private var mapa: GoogleMap? = null
-    private lateinit var viagemId: String
+    private lateinit var roteiroId: String
     private lateinit var textSemPontos: TextView
-    private val formatoData = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.forLanguageTag("pt-BR"))
-    private lateinit var textPedido: TextView
-    private lateinit var textQuantidade: TextView
+    private lateinit var textMotorista: TextView
     private lateinit var textPeriodo: TextView
-    private lateinit var textKm: TextView
+    private lateinit var textKmTotal: TextView
+    private lateinit var recyclerRateio: RecyclerView
+    private val formatoData = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.forLanguageTag("pt-BR"))
 
-    /** Lê a viagem recebida por Intent, pede o GoogleMap assíncrono e manda carregar os pontos. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_rota_viagem)
-        title = getString(R.string.rota_titulo)
+        setContentView(R.layout.activity_detalhes_roteiro)
+        title = getString(R.string.detalhes_roteiro_titulo)
 
-        val idRecebido = intent.getStringExtra(EXTRA_VIAGEM_ID)
+        val idRecebido = intent.getStringExtra(EXTRA_ROTEIRO_ID)
         if (idRecebido.isNullOrBlank()) {
             finish()
             return
         }
-        viagemId = idRecebido
+        roteiroId = idRecebido
+        val viagemDestacadaId = intent.getStringExtra(EXTRA_VIAGEM_DESTACADA_ID)
 
         textSemPontos = findViewById(R.id.textSemPontos)
-        textPedido = findViewById(R.id.textPedido)
-        textQuantidade = findViewById(R.id.textQuantidade)
+        textMotorista = findViewById(R.id.textMotorista)
         textPeriodo = findViewById(R.id.textPeriodo)
-        textKm = findViewById(R.id.textKm)
+        textKmTotal = findViewById(R.id.textKmTotal)
+        recyclerRateio = findViewById(R.id.recyclerRateio)
+        recyclerRateio.layoutManager = LinearLayoutManager(this)
 
         val fragmentoMapa = supportFragmentManager.findFragmentById(R.id.mapa) as SupportMapFragment
         fragmentoMapa.getMapAsync(this)
 
         viewModel.estado.observe(this) { estado -> exibirEstado(estado) }
-        viewModel.carregar(viagemId)
+        viewModel.carregar(roteiroId, viagemDestacadaId)
     }
 
-    /** Chamado quando o GoogleMap termina de carregar; desenha dados já recebidos, se houver. */
     override fun onMapReady(googleMap: GoogleMap) {
         mapa = googleMap
-        // O mapa pode ficar pronto depois de já termos recebido os pontos da ViewModel; sem
-        // isso, essa primeira atualização passaria batida (exibirEstado ignora sem mapa pronto).
         viewModel.estado.value?.let { exibirEstado(it) }
     }
 
-    /** Desenha a Polyline do trajeto e os marcadores de início/fim a partir dos pontos de GPS. */
-    private fun exibirEstado(estado: RotaViagemUiState) {
+    private fun exibirEstado(estado: DetalhesRoteiroUiState) {
         if (!estado.carregado) return
 
-        textPedido.text = getString(R.string.rota_pedido_formato, estado.pedidoId, estado.destinatarioNome)
-        textQuantidade.text = getString(R.string.rota_quantidade_formato, formatarM3(estado.metrosCubicos))
+        textMotorista.text = getString(R.string.detalhes_roteiro_motorista_formato, estado.motoristaNome)
+
         val inicio = estado.dataInicio?.let { formatoData.format(Date(it)) } ?: ""
-        val fim = estado.dataFim?.let { formatoData.format(Date(it)) }
+        val fim = estado.dataFim
         textPeriodo.text = if (fim != null) {
-            getString(R.string.rota_periodo_formato, inicio, fim)
+            getString(R.string.detalhes_roteiro_periodo_formato, inicio, formatoData.format(Date(fim)))
         } else {
-            getString(R.string.rota_inicio_formato, inicio)
+            getString(R.string.detalhes_roteiro_inicio_formato, inicio)
         }
-        textKm.text = estado.kmPercorridos?.let { getString(R.string.rota_km_formato, formatarKm(it)) } ?: ""
-        textKm.visibility = if (estado.kmPercorridos != null) View.VISIBLE else View.GONE
+
+        if (estado.kmTotalRota != null) {
+            textKmTotal.text = getString(R.string.detalhes_roteiro_km_total_formato, formatarKm(estado.kmTotalRota))
+            textKmTotal.visibility = View.VISIBLE
+        } else {
+            textKmTotal.visibility = View.GONE
+        }
+
+        recyclerRateio.adapter = ItemRateioAdapter(estado.itens)
 
         val mapaAtual = mapa ?: return
 
@@ -99,9 +106,9 @@ class RotaViagemActivity : AppCompatActivity(), OnMapReadyCallback {
             textSemPontos.visibility = View.VISIBLE
             return
         }
+        textSemPontos.visibility = View.GONE
 
         val posicoes = estado.pontos.map { LatLng(it.latitude, it.longitude) }
-
         mapaAtual.addPolyline(PolylineOptions().addAll(posicoes).width(8f))
         mapaAtual.addMarker(
             MarkerOptions().position(posicoes.first())
@@ -119,9 +126,7 @@ class RotaViagemActivity : AppCompatActivity(), OnMapReadyCallback {
         if (posicoes.size == 1) {
             mapaAtual.moveCamera(CameraUpdateFactory.newLatLngZoom(posicoes.first(), 15f))
         } else {
-            val limites = LatLngBounds.Builder().apply {
-                posicoes.forEach { include(it) }
-            }.build()
+            val limites = LatLngBounds.Builder().apply { posicoes.forEach { include(it) } }.build()
             mapaAtual.moveCamera(CameraUpdateFactory.newLatLngBounds(limites, PADDING_LIMITES_PX))
         }
     }

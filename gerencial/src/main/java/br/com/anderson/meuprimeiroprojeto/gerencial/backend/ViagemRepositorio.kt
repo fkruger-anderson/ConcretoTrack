@@ -134,14 +134,17 @@ object ViagemRepositorio {
             }
     }
 
-    /** Pontos de GPS gravados durante a viagem, em ordem, pra desenhar a rota no mapa. */
-    suspend fun listarPontosGps(viagemId: String): List<PontoGpsRemoto> {
-        val snapshot = db.collection("viagens").document(viagemId)
-            .collection("pontosGps")
+    /** Viagens de um roteiro específico — usado na tela de detalhe do roteiro (mapa + rateio). */
+    suspend fun listarPorRoteiro(roteiroId: String): List<Pair<String, ViagemRemota>> {
+        val snapshot = db.collection("viagens")
+            .whereEqualTo("roteiroId", roteiroId)
             .get()
             .aguardar()
         return snapshot.documents
-            .mapNotNull { it.toObject(PontoGpsRemoto::class.java) }
-            .sortedBy { it.horario }
+            .mapNotNull { documento ->
+                val remota = documento.toObject(ViagemRemota::class.java) ?: return@mapNotNull null
+                documento.id to remota
+            }
+            .sortedBy { it.second.dataAtribuicao }
     }
 }

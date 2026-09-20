@@ -1,0 +1,122 @@
+package br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel
+
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import br.com.anderson.meuprimeiroprojeto.gerencial.backend.PedidoRepositorio
+import br.com.anderson.meuprimeiroprojeto.gerencial.backend.PontoGpsRemoto
+import br.com.anderson.meuprimeiroprojeto.gerencial.backend.RoteiroRepositorio
+import br.com.anderson.meuprimeiroprojeto.gerencial.backend.ViagemRepositorio
+import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusViagem
+import kotlinx.coroutines.launch
+
+/** Uma linha da tabela de rateio: um pedido do roteiro, com peso/percentual/km já calculados. */
+data class ItemRateio(
+    val viagemId: String,
+    val pedidoId: Int,
+    val destinatarioNome: String,
+    val volumeM3: Double,
+    val distanciaDedicadaKm: Double,
+    val percentualRateio: Double,
+    val kmAtribuido: Double?,
+    val destacado: Boolean
+)
+
+/** Estado exibido por [DetalhesRoteiroActivity][br.com.anderson.meuprimeiroprojeto.gerencial.ui.DetalhesRoteiroActivity]. */
+data class DetalhesRoteiroUiState(
+    val carregado: Boolean = false,
+    val pontos: List<PontoGpsRemoto> = emptyList(),
+    val motoristaNome: String = "",
+    val status: String = "",
+    val dataInicio: Long? = null,
+    val dataFim: Long? = null,
+    val kmTotalRota: Double? = null,
+    val itens: List<ItemRateio> = emptyList()
+)
+
+/**
+ * Carrega o roteiro, seus pontos de GPS e a tabela de rateio (peso teórico e percentual
+ * recalculados aqui pra exibição; o `kmAtribuido` real de cada viagem já foi gravado por
+ * `RoteiroRepositorio.encerrarRoteiro`, no app motorista, ao encerrar — aqui só se lê).
+ */
+class DetalhesRoteiroViewModel : ViewModel() {
+
+    private val _estado = MutableLiveData(DetalhesRoteiroUiState())
+    val estado: LiveData<DetalhesRoteiroUiState> = _estado
+
+    fun carregar(roteiroId: String, viagemDestacadaId: String?) {
+        viewModelScope.launch {
+            val roteiro = try {
+                RoteiroRepositorio.buscarPorId(roteiroId)
+            } catch (erro: Exception) {
+                null
+            } ?: return@launch
+
+            val pontos = try {
+                RoteiroRepositorio.listarPontosGps(roteiroId)
+            } catch (erro: Exception) {
+                emptyList()
+            }
+
+            val viagens = try {
+                ViagemRepositorio.listarPorRoteiro(roteiroId)
+            } catch (erro: Exception) {
+                emptyList()
+            }
+
+            val distanciasPorPedido = viagens.map { (_, viagem) -> viagem.pedidoId }.distinct()
+                .associateWith { id ->
+                    try {
+                        PedidoRepositorio.buscarPorId(id)?.distanciaDedicadaKm ?: 0.0
+                    } catch (erro: Exception) {
+                        0.0
+                    }
+                }
+
+            val pesoTotal = viagens.sumOf { (_, viagem) ->
+                if (viagem.status == StatusViagem.CANCELADA.name) {
+                    0.0
+                } else {
+                    viagem.metrosCubicos * (distanciasPorPedido[viagem.pedidoId] ?: 0.0)
+                }
+            }
+
+            val itens = viagens.map { (id, viagem) ->
+                val pedido = try {
+                    PedidoRepositorio.buscarPorId(viagem.pedidoId)
+                } catch (erro: Exception) {
+                    null
+                }
+                val distancia = distanciasPorPedido[viagem.pedidoId] ?: 0.0
+                val pesoTeorico = viagem.metrosCubicos * distancia
+                val percentual = if (pesoTotal > 0.0 && viagem.status != StatusViagem.CANCELADA.name) {
+                    pesoTeorico / pesoTotal * 100.0
+                } else {
+                    0.0
+                }
+                ItemRateio(
+                    viagemId = id,
+                    pedidoId = viagem.pedidoId,
+                    destinatarioNome = pedido?.destinatarioNome ?: "",
+                    volumeM3 = viagem.metrosCubicos,
+                    distanciaDedicadaKm = distancia,
+                    percentualRateio = percentual,
+                    kmAtribuido = viagem.kmPercorridos,
+                    destacado = id == viagemDestacadaId
+                )
+            }
+
+            _estado.value = DetalhesRoteiroUiState(
+                carregado = true,
+                pontos = pontos,
+                motoristaNome = roteiro.motoristaNome,
+                status = roteiro.status,
+                dataInicio = roteiro.dataInicio,
+                dataFim = roteiro.dataFim,
+                kmTotalRota = roteiro.kmTotalRota,
+                itens = itens
+            )
+        }
+    }
+}
