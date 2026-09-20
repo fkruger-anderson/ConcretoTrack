@@ -41,14 +41,23 @@ object ViagemRepositorio {
     }
 
     /** Mesmo raciocínio de [iniciarTransito]: finalizar não pode depender de ter sinal agora. */
-    fun finalizarViagem(viagemId: String) {
+    fun finalizarViagem(viagemId: String, kmPercorridos: Double) {
         db.collection("viagens").document(viagemId)
             .update(
                 mapOf(
                     "status" to StatusViagem.CONCLUIDA.name,
-                    "dataFim" to System.currentTimeMillis()
+                    "dataFim" to System.currentTimeMillis(),
+                    "kmPercorridos" to kmPercorridos
                 )
             )
+    }
+
+    /**
+     * Grava só o km percorrido, sem mexer em status/data — usado quando o gerente cancela a
+     * viagem remotamente (o status e a data de cancelamento já foram gravados por ele).
+     */
+    fun gravarKmPercorridos(viagemId: String, kmPercorridos: Double) {
+        db.collection("viagens").document(viagemId).update("kmPercorridos", kmPercorridos)
     }
 
     /** Busca os dados de uma viagem específica pelo id do documento. */

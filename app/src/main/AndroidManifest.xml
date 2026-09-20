@@ -37,12 +37,6 @@
         <activity
             android:name=".motorista.ui.DetalhesViagemActivity"
             android:exported="false" />
-        <activity
-            android:name=".motorista.ui.IniciarTransitoActivity"
-            android:exported="false" />
-        <activity
-            android:name=".motorista.ui.ViagemEmAndamentoActivity"
-            android:exported="false" />
 
         <service
             android:name=".motorista.gps.RastreamentoService"
