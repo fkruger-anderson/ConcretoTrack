@@ -1,5 +1,6 @@
 package br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -40,6 +41,8 @@ data class AtribuirViagemUiState(
 class AtribuirViagemViewModel : ViewModel() {
 
     companion object {
+        private const val TAG = "AtribuirViagemViewModel"
+
         // Atribuir precisa de conexão na hora (transação no servidor) — sem isso o gerente
         // ficaria esperando pra sempre, então cortamos e mostramos erro de conexão.
         private const val TEMPO_LIMITE_MS = 10_000L
@@ -54,6 +57,7 @@ class AtribuirViagemViewModel : ViewModel() {
             val pedido = try {
                 PedidoRepositorio.buscarPorId(pedidoId)
             } catch (erro: Exception) {
+                Log.w(TAG, "Falha ao buscar pedido $pedidoId", erro)
                 null
             }
             if (pedido == null) {
@@ -64,11 +68,13 @@ class AtribuirViagemViewModel : ViewModel() {
             val motoristas = try {
                 MotoristaRepositorio.listar()
             } catch (erro: Exception) {
+                Log.w(TAG, "Falha ao listar motoristas", erro)
                 emptyList()
             }
             val caminhoes = try {
                 CaminhaoRepositorio.listar()
             } catch (erro: Exception) {
+                Log.w(TAG, "Falha ao listar caminhões", erro)
                 emptyList()
             }
 
@@ -114,6 +120,7 @@ class AtribuirViagemViewModel : ViewModel() {
             } catch (erro: TimeoutCancellationException) {
                 _estado.value = _estado.value?.copy(enviando = false, erroAtribuir = AtribuirErro.SEM_CONEXAO)
             } catch (erro: Exception) {
+                Log.w(TAG, "Falha ao atribuir viagem do pedido $pedidoId", erro)
                 _estado.value = _estado.value?.copy(enviando = false, erroAtribuir = AtribuirErro.GENERICO)
             }
         }

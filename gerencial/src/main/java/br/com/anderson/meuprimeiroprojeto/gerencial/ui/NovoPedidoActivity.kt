@@ -21,6 +21,7 @@ import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.NovoPedidoUiSta
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.NovoPedidoViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 /** Cadastro de um novo pedido: dados do destinatário (documento, nome, endereço) e a quantidade total em m³. */
@@ -47,6 +48,10 @@ class NovoPedidoActivity : AppCompatActivity() {
     // Timestamp (meia-noite do dia escolhido) da data de entrega; null enquanto o gerente não escolher.
     private var dataEntregaSelecionada: Long? = null
 
+    companion object {
+        private const val CHAVE_DATA_ENTREGA = "data_entrega_selecionada"
+    }
+
     /** Liga as Views, o autocompletar de UF, a máscara de CPF/CNPJ e os botões de data/salvar. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,6 +71,10 @@ class NovoPedidoActivity : AppCompatActivity() {
         botaoSalvar = findViewById(R.id.botaoSalvar)
         progresso = findViewById(R.id.progresso)
         textErro = findViewById(R.id.textErro)
+
+        // Restaura a data de entrega escolhida antes de girar a tela (senão ela se perde).
+        dataEntregaSelecionada = savedInstanceState?.getLong(CHAVE_DATA_ENTREGA)?.takeIf { it != 0L }
+        dataEntregaSelecionada?.let { botaoDataEntrega.text = formatoData.format(Date(it)) }
 
         editUf.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, Uf.siglas))
         editDocumento.addTextChangedListener(MascaraDocumento(editDocumento))
@@ -88,6 +97,12 @@ class NovoPedidoActivity : AppCompatActivity() {
         }
 
         viewModel.estado.observe(this) { estado -> exibirEstado(estado) }
+    }
+
+    /** Salva a data de entrega escolhida para sobreviver à rotação de tela. */
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        dataEntregaSelecionada?.let { outState.putLong(CHAVE_DATA_ENTREGA, it) }
     }
 
     /** Abre o calendário do Android; ao escolher, guarda o timestamp e atualiza o texto do botão. */

@@ -1,6 +1,5 @@
 package br.com.anderson.meuprimeiroprojeto.gerencial.backend
 
-import android.content.Context
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.Firebase
@@ -29,12 +28,12 @@ object MotoristaRepositorio {
      * essa chamada: ela tem sua própria sessão, isolada da instância principal (onde o
      * gerente continua logado o tempo todo).
      */
-    suspend fun cadastrar(context: Context, nome: String, cpf: String, email: String, senha: String) {
+    suspend fun cadastrar(nome: String, cpf: String, email: String, senha: String) {
         val appPrincipal = FirebaseApp.getInstance()
         val appSecundario = try {
             FirebaseApp.getInstance(APP_SECUNDARIO)
         } catch (erro: IllegalStateException) {
-            FirebaseApp.initializeApp(context.applicationContext, appPrincipal.options, APP_SECUNDARIO)
+            FirebaseApp.initializeApp(appPrincipal.applicationContext, appPrincipal.options, APP_SECUNDARIO)
         }
 
         val authSecundario = FirebaseAuth.getInstance(appSecundario)

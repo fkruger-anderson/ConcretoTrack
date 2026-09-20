@@ -1,6 +1,5 @@
 package br.com.anderson.meuprimeiroprojeto.gerencial.backend
 
-import android.content.Context
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
@@ -42,12 +41,12 @@ object AutenticacaoRepositorio {
      * gerente novo) em vez da principal — se gravássemos pela sessão de quem está cadastrando,
      * a escrita seria feita com o uid errado e a regra rejeitaria.
      */
-    suspend fun cadastrarNovoGerente(context: Context, nome: String, email: String, senha: String) {
+    suspend fun cadastrarNovoGerente(nome: String, email: String, senha: String) {
         val appPrincipal = FirebaseApp.getInstance()
         val appSecundario = try {
             FirebaseApp.getInstance(APP_SECUNDARIO)
         } catch (erro: IllegalStateException) {
-            FirebaseApp.initializeApp(context.applicationContext, appPrincipal.options, APP_SECUNDARIO)
+            FirebaseApp.initializeApp(appPrincipal.applicationContext, appPrincipal.options, APP_SECUNDARIO)
         }
 
         val authSecundario = FirebaseAuth.getInstance(appSecundario)

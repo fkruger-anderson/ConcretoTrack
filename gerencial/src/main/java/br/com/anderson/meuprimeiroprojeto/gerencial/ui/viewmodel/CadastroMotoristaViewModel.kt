@@ -1,10 +1,9 @@
 package br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel
 
-import android.app.Application
 import android.util.Patterns
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.MotoristaRepositorio
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.DocumentoUtils
@@ -28,11 +27,11 @@ data class CadastroMotoristaUiState(
 )
 
 /**
- * Cria o login (email/senha) e o perfil do motorista. É [AndroidViewModel] porque
- * [MotoristaRepositorio.cadastrar] precisa de um `Context` (pra abrir uma segunda instância
- * do Firebase e não substituir a sessão do gerente logado — ver o comentário lá).
+ * Cria o login (email/senha) e o perfil do motorista. [MotoristaRepositorio.cadastrar] não
+ * precisa mais de `Context`: a segunda instância do Firebase é inicializada usando o
+ * `applicationContext` do próprio app principal, já disponível ali dentro (ver o comentário lá).
  */
-class CadastroMotoristaViewModel(application: Application) : AndroidViewModel(application) {
+class CadastroMotoristaViewModel : ViewModel() {
 
     private val _estado = MutableLiveData(CadastroMotoristaUiState())
     val estado: LiveData<CadastroMotoristaUiState> = _estado
@@ -68,7 +67,7 @@ class CadastroMotoristaViewModel(application: Application) : AndroidViewModel(ap
         )
         viewModelScope.launch {
             try {
-                MotoristaRepositorio.cadastrar(getApplication(), nome, cpf, email, senha)
+                MotoristaRepositorio.cadastrar(nome, cpf, email, senha)
                 _estado.value = _estado.value?.copy(carregando = false, sucesso = Evento(Unit))
             } catch (erro: FirebaseAuthUserCollisionException) {
                 _estado.value = _estado.value?.copy(carregando = false, erroGeral = CadastroMotoristaErro.EMAIL_EM_USO)

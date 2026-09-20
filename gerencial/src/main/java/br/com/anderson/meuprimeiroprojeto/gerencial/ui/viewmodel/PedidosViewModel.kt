@@ -1,5 +1,6 @@
 package br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -18,6 +19,10 @@ data class PedidosUiState(
 /** Lista os pedidos com o filtro de status escolhido — a filtragem em si é feita aqui, não na View. */
 class PedidosViewModel : ViewModel() {
 
+    companion object {
+        private const val TAG = "PedidosViewModel"
+    }
+
     private val _estado = MutableLiveData(PedidosUiState())
     val estado: LiveData<PedidosUiState> = _estado
 
@@ -33,6 +38,7 @@ class PedidosViewModel : ViewModel() {
                 todosPedidos = PedidoRepositorio.listarComStatus()
                 aplicarFiltro()
             } catch (erro: Exception) {
+                Log.w(TAG, "Falha ao carregar pedidos", erro)
                 _estado.value = PedidosUiState(erroAoCarregar = true)
             }
         }

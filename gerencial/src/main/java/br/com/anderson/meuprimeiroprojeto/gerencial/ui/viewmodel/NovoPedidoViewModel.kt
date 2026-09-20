@@ -1,5 +1,6 @@
 package br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -24,6 +25,10 @@ data class NovoPedidoUiState(
 
 /** Valida os campos (documento, endereço digitado à mão, quantidade) e cadastra o pedido no Firestore. */
 class NovoPedidoViewModel : ViewModel() {
+
+    companion object {
+        private const val TAG = "NovoPedidoViewModel"
+    }
 
     private val _estado = MutableLiveData(NovoPedidoUiState())
     val estado: LiveData<NovoPedidoUiState> = _estado
@@ -108,6 +113,7 @@ class NovoPedidoViewModel : ViewModel() {
                 )
                 _estado.value = _estado.value?.copy(carregando = false, sucesso = Evento(id))
             } catch (erro: Exception) {
+                Log.w(TAG, "Falha ao cadastrar pedido", erro)
                 _estado.value = _estado.value?.copy(carregando = false, erroSalvar = true)
             }
         }

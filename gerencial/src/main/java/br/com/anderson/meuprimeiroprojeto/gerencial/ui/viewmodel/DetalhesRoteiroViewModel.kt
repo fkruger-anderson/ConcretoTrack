@@ -1,5 +1,6 @@
 package br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -44,6 +45,10 @@ data class DetalhesRoteiroUiState(
  */
 class DetalhesRoteiroViewModel : ViewModel() {
 
+    companion object {
+        private const val TAG = "DetalhesRoteiroViewModel"
+    }
+
     private val _estado = MutableLiveData(DetalhesRoteiroUiState())
     val estado: LiveData<DetalhesRoteiroUiState> = _estado
 
@@ -52,18 +57,21 @@ class DetalhesRoteiroViewModel : ViewModel() {
             val roteiro = try {
                 RoteiroRepositorio.buscarPorId(roteiroId)
             } catch (erro: Exception) {
+                Log.w(TAG, "Falha ao buscar roteiro $roteiroId", erro)
                 null
             } ?: return@launch
 
             val pontos = try {
                 RoteiroRepositorio.listarPontosGps(roteiroId)
             } catch (erro: Exception) {
+                Log.w(TAG, "Falha ao buscar pontos GPS do roteiro $roteiroId", erro)
                 emptyList()
             }
 
             val viagens = try {
                 ViagemRepositorio.listarPorRoteiro(roteiroId)
             } catch (erro: Exception) {
+                Log.w(TAG, "Falha ao buscar viagens do roteiro $roteiroId", erro)
                 emptyList()
             }
 
@@ -72,6 +80,7 @@ class DetalhesRoteiroViewModel : ViewModel() {
                     try {
                         PedidoRepositorio.buscarPorId(id)?.distanciaDedicadaKm ?: 0.0
                     } catch (erro: Exception) {
+                        Log.w(TAG, "Falha ao buscar distância dedicada do pedido $id", erro)
                         0.0
                     }
                 }
@@ -88,6 +97,7 @@ class DetalhesRoteiroViewModel : ViewModel() {
                 val pedido = try {
                     PedidoRepositorio.buscarPorId(viagem.pedidoId)
                 } catch (erro: Exception) {
+                    Log.w(TAG, "Falha ao buscar pedido ${viagem.pedidoId}", erro)
                     null
                 }
                 val distancia = distanciasPorPedido[viagem.pedidoId] ?: 0.0

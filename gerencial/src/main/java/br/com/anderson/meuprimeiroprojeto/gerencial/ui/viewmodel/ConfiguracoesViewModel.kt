@@ -1,5 +1,6 @@
 package br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -13,6 +14,10 @@ data class ConfiguracoesUiState(val nomeGerente: String = "")
 /** Só busca o nome do gerente logado pra mostrar a saudação. */
 class ConfiguracoesViewModel : ViewModel() {
 
+    companion object {
+        private const val TAG = "ConfiguracoesViewModel"
+    }
+
     private val _estado = MutableLiveData(ConfiguracoesUiState())
     val estado: LiveData<ConfiguracoesUiState> = _estado
 
@@ -23,6 +28,7 @@ class ConfiguracoesViewModel : ViewModel() {
             val perfil = try {
                 AutenticacaoRepositorio.buscarPerfil(uid)
             } catch (erro: Exception) {
+                Log.w(TAG, "Falha ao buscar perfil do gerente $uid", erro)
                 null
             }
             _estado.value = ConfiguracoesUiState(nomeGerente = perfil?.nome ?: "")

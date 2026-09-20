@@ -2,7 +2,6 @@ package br.com.anderson.meuprimeiroprojeto.gerencial.backend
 
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusViagem
 import com.google.firebase.Firebase
-import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.firestore
 
 /** Atribuição, cancelamento e consulta de viagens — inclusive as escritas que mexem no saldo do pedido, sempre em transação. */
@@ -114,24 +113,6 @@ object ViagemRepositorio {
                 documento.id to remota
             }
             .sortedByDescending { it.second.dataAtribuicao }
-    }
-
-    /**
-     * Escuta em tempo real as viagens em rota agora — usado pelo mapa do gerente. Quem cancela
-     * a escuta é o chamador, guardando o [ListenerRegistration] retornado e chamando `.remove()`
-     * quando não precisar mais.
-     */
-    fun escutarViagensEmRota(aoAtualizar: (List<Pair<String, ViagemRemota>>) -> Unit): ListenerRegistration {
-        return db.collection("viagens")
-            .whereEqualTo("status", StatusViagem.EM_ROTA.name)
-            .addSnapshotListener { snapshot, erro ->
-                if (erro != null || snapshot == null) return@addSnapshotListener
-                val viagens = snapshot.documents.mapNotNull { documento ->
-                    val viagem = documento.toObject(ViagemRemota::class.java) ?: return@mapNotNull null
-                    documento.id to viagem
-                }
-                aoAtualizar(viagens)
-            }
     }
 
     /** Viagens de um roteiro específico — usado na tela de detalhe do roteiro (mapa + rateio). */

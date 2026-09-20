@@ -1,10 +1,9 @@
 package br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel
 
-import android.app.Application
 import android.util.Patterns
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.AutenticacaoRepositorio
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
@@ -26,12 +25,12 @@ data class CadastroGerenteUiState(
 )
 
 /**
- * Cadastra outro gerente a partir da aba Configurações, com o gerente atual já logado. É
- * [AndroidViewModel] porque [AutenticacaoRepositorio.cadastrarNovoGerente] precisa de um
- * `Context` (mesma razão do cadastro de motorista: abre uma segunda instância do Firebase
- * para não substituir a sessão de quem está criando a conta).
+ * Cadastra outro gerente a partir da aba Configurações, com o gerente atual já logado.
+ * [AutenticacaoRepositorio.cadastrarNovoGerente] não precisa mais de `Context`: a segunda
+ * instância do Firebase é inicializada usando o `applicationContext` do próprio app principal
+ * ([com.google.firebase.FirebaseApp.applicationContext]), já disponível ali dentro.
  */
-class CadastroGerenteViewModel(application: Application) : AndroidViewModel(application) {
+class CadastroGerenteViewModel : ViewModel() {
 
     private val _estado = MutableLiveData(CadastroGerenteUiState())
     val estado: LiveData<CadastroGerenteUiState> = _estado
@@ -63,7 +62,7 @@ class CadastroGerenteViewModel(application: Application) : AndroidViewModel(appl
         )
         viewModelScope.launch {
             try {
-                AutenticacaoRepositorio.cadastrarNovoGerente(getApplication(), nome, email, senha)
+                AutenticacaoRepositorio.cadastrarNovoGerente(nome, email, senha)
                 _estado.value = _estado.value?.copy(carregando = false, sucesso = Evento(Unit))
             } catch (erro: FirebaseAuthUserCollisionException) {
                 _estado.value = _estado.value?.copy(carregando = false, erroGeral = CadastroGerenteErro.EMAIL_EM_USO)
