@@ -10,3 +10,8 @@ fun formatarM3(valor: Double): String {
         String.format(Locale.getDefault(), "%.1f", valor)
     }
 }
+
+/** Formata km com uma casa decimal (12.0 -> "12,0", 12.34 -> "12,3"). */
+fun formatarKm(valor: Double): String {
+    return String.format(Locale.getDefault(), "%.1f", valor)
+}
