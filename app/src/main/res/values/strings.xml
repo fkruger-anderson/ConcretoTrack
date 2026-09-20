@@ -26,19 +26,11 @@
     <string name="notificacao_rastreamento_titulo">Viagem em andamento</string>
     <string name="notificacao_rastreamento_texto">Gravando sua localização até o fim da viagem</string>
 
-    <string name="andamento_permissao_negada">Permissão de localização negada; o rastreamento não pode iniciar</string>
-    <string name="andamento_bateria_texto">Para o rastreamento não ser interrompido, permita que o app ignore a otimização de bateria</string>
-    <string name="andamento_bateria_botao">Ajustar</string>
-    <string name="andamento_viagem_finalizada">Viagem finalizada</string>
-    <string name="andamento_viagem_cancelada">O gerente cancelou esta viagem. Motivo: %1$s</string>
-
     <string name="detalhes_viagem_inicio_formato">Iniciada em: %1$s</string>
     <string name="detalhes_viagem_km_formato">%1$s km percorridos</string>
-    <string name="detalhes_viagem_posicao_atual">Sua posição atual</string>
-    <string name="detalhes_viagem_confirmar_iniciar">Iniciar o trânsito?</string>
-    <string name="detalhes_viagem_confirmar_encerrar">Finalizar a viagem?</string>
-    <string name="detalhes_viagem_botao_encerrar">Encerrar</string>
-    <string name="detalhes_viagem_sem_pontos">Nenhum ponto de GPS registrado ainda</string>
+    <string name="detalhes_viagem_botao_adicionar">Adicionar ao roteiro</string>
+    <string name="detalhes_viagem_botao_remover">Remover do roteiro</string>
+    <string name="detalhes_viagem_botao_entregue">Marcar como entregue</string>
 
     <string name="cancelar_viagem_confirmar">Confirmar</string>
     <string name="cancelar_viagem_voltar">Voltar</string>

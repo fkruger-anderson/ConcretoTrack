@@ -1,18 +1,19 @@
 package br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.PedidoRepositorio
+import br.com.anderson.meuprimeiroprojeto.motorista.backend.RoteiroRepositorio
+import br.com.anderson.meuprimeiroprojeto.motorista.backend.ViagemRemota
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.ViagemRepositorio
-import br.com.anderson.meuprimeiroprojeto.motorista.db.AppDatabase
-import br.com.anderson.meuprimeiroprojeto.motorista.db.PontoGps
-import br.com.anderson.meuprimeiroprojeto.motorista.db.PontoGpsRepositorio
+import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusRoteiro
 import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusViagem
-import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.launch
+
+/** Ação disponível no botão da tela de detalhes, conforme o estado da viagem/roteiro. */
+enum class AcaoViagem { ADICIONAR_AO_ROTEIRO, REMOVER_DO_ROTEIRO, MARCAR_ENTREGUE, NENHUMA }
 
 /** Estado exibido por [DetalhesViagemActivity][br.com.anderson.meuprimeiroprojeto.motorista.ui.DetalhesViagemActivity]. */
 data class DetalhesViagemUiState(
@@ -23,29 +24,28 @@ data class DetalhesViagemUiState(
     val metrosCubicos: Double = 0.0,
     val caminhaoPlaca: String = "",
     val status: String = "",
+    val roteiroId: String? = null,
     val dataInicio: Long? = null,
     val dataFim: Long? = null,
-    val kmPercorridos: Double = 0.0,
-    val pontos: List<PontoGps> = emptyList(),
-    val cancelamento: Evento<String>? = null,
-    val encerrada: Evento<Unit>? = null
+    val kmPercorridos: Double? = null,
+    val acao: AcaoViagem = AcaoViagem.NENHUMA,
+    val erroAcao: Evento<String>? = null,
+    val acaoConcluida: Evento<Unit>? = null
 )
 
 /**
- * Carrega os dados da viagem/pedido; se a viagem estiver em rota, também carrega os pontos de
- * GPS (pra desenhar o trajeto) e o km já percorrido, e escuta cancelamento remoto do gerente.
- * É [AndroidViewModel] porque precisa do Room (pontos de GPS, cálculo de km).
+ * Carrega os dados da viagem/pedido e decide qual ação o botão oferece — ver [AcaoViagem]. Sem
+ * mapa/Room aqui: o trajeto ao vivo e o cálculo de km vivem na aba Roteiro agora.
  */
-class DetalhesViagemViewModel(application: Application) : AndroidViewModel(application) {
+class DetalhesViagemViewModel : ViewModel() {
 
     private val _estado = MutableLiveData(DetalhesViagemUiState())
     val estado: LiveData<DetalhesViagemUiState> = _estado
 
-    private var registroCancelamento: ListenerRegistration? = null
-    private var jaTratouEncerramento = false
+    private lateinit var motoristaUid: String
 
-    /** Busca a viagem/pedido; se em rota, também os pontos de GPS e o km, e liga a escuta de cancelamento. */
-    fun carregar(viagemId: String) {
+    fun carregar(viagemId: String, motoristaUid: String) {
+        this.motoristaUid = motoristaUid
         viewModelScope.launch {
             val viagem = try {
                 ViagemRepositorio.buscarPorId(viagemId)
@@ -63,13 +63,7 @@ class DetalhesViagemViewModel(application: Application) : AndroidViewModel(appli
                 null
             }
 
-            val emRota = viagem.status == StatusViagem.EM_ROTA.name
-            val pontos = if (emRota) {
-                AppDatabase.obter(getApplication()).pontoGpsDao().buscarPorRoteiro(viagemId)
-            } else {
-                emptyList()
-            }
-            val km = if (emRota) PontoGpsRepositorio.calcularKmPercorridos(getApplication(), viagemId) else 0.0
+            val acao = decidirAcao(viagem, motoristaUid)
 
             _estado.value = DetalhesViagemUiState(
                 carregado = true,
@@ -78,59 +72,79 @@ class DetalhesViagemViewModel(application: Application) : AndroidViewModel(appli
                 metrosCubicos = viagem.metrosCubicos,
                 caminhaoPlaca = viagem.caminhaoPlaca,
                 status = viagem.status,
+                roteiroId = viagem.roteiroId,
                 dataInicio = viagem.dataInicio,
                 dataFim = viagem.dataFim,
-                kmPercorridos = km,
-                pontos = pontos
+                kmPercorridos = viagem.kmPercorridos,
+                acao = acao
             )
-
-            if (emRota) escutarCancelamento(viagemId)
         }
     }
 
-    /** Não espera confirmação do servidor — funciona sem sinal (mesmo raciocínio de sempre). */
-    fun confirmarInicio(viagemId: String) {
-        ViagemRepositorio.iniciarTransito(viagemId)
-        carregar(viagemId)
+    /**
+     * Sem roteiro ainda: oferece "adicionar" só se o motorista não tiver roteiro em rota agora
+     * (roteiro só aceita viagem nova enquanto planejando). Com roteiro: "remover" se ainda
+     * planejando, "marcar entregue" se em rota e a viagem ainda não foi concluída, nada se já
+     * concluída/cancelada.
+     */
+    private suspend fun decidirAcao(viagem: ViagemRemota, motoristaUid: String): AcaoViagem {
+        if (viagem.status == StatusViagem.CONCLUIDA.name || viagem.status == StatusViagem.CANCELADA.name) {
+            return AcaoViagem.NENHUMA
+        }
+        val roteiroId = viagem.roteiroId
+        if (roteiroId == null) {
+            val roteiroAtivo = try {
+                RoteiroRepositorio.buscarRoteiroAtivo(motoristaUid)
+            } catch (erro: Exception) {
+                null
+            }
+            return if (roteiroAtivo?.second?.status == StatusRoteiro.EM_ROTA.name) {
+                AcaoViagem.NENHUMA
+            } else {
+                AcaoViagem.ADICIONAR_AO_ROTEIRO
+            }
+        }
+        val roteiro = try {
+            RoteiroRepositorio.buscarPorId(roteiroId)
+        } catch (erro: Exception) {
+            null
+        }
+        return when (roteiro?.status) {
+            StatusRoteiro.PLANEJANDO.name -> AcaoViagem.REMOVER_DO_ROTEIRO
+            StatusRoteiro.EM_ROTA.name -> AcaoViagem.MARCAR_ENTREGUE
+            else -> AcaoViagem.NENHUMA
+        }
     }
 
-    /**
-     * Calcula o km final a partir dos pontos locais e grava junto com status/dataFim, numa
-     * escrita só. Guarda simétrica à de [escutarCancelamento]: se o gerente já cancelou a
-     * viagem remotamente antes deste toque chegar aqui, não faz nada — senão sobrescreveria o
-     * cancelamento com CONCLUIDA.
-     */
-    fun confirmarEncerramento(viagemId: String) {
-        if (jaTratouEncerramento) return
-        jaTratouEncerramento = true
+    fun adicionarAoRoteiro(viagemId: String) {
         viewModelScope.launch {
-            val km = PontoGpsRepositorio.calcularKmPercorridos(getApplication(), viagemId)
-            ViagemRepositorio.finalizarViagem(viagemId, km)
-            _estado.value = _estado.value?.copy(encerrada = Evento(Unit))
-        }
-    }
-
-    /**
-     * O gerente pode cancelar a viagem pelo app dele enquanto o motorista está rodando. Ao
-     * detectar, calcula e grava o km já percorrido (o caminhão rodou aquela distância de
-     * verdade), mesmo a viagem ficando cancelada.
-     */
-    private fun escutarCancelamento(viagemId: String) {
-        if (registroCancelamento != null) return
-        registroCancelamento = ViagemRepositorio.escutarViagem(viagemId) { viagem ->
-            if (!jaTratouEncerramento && viagem.status == StatusViagem.CANCELADA.name) {
-                jaTratouEncerramento = true
-                viewModelScope.launch {
-                    val km = PontoGpsRepositorio.calcularKmPercorridos(getApplication(), viagemId)
-                    ViagemRepositorio.gravarKmPercorridos(viagemId, km)
-                    _estado.value = _estado.value?.copy(cancelamento = Evento(viagem.motivoCancelamento ?: ""))
-                }
+            try {
+                RoteiroRepositorio.adicionarViagem(viagemId, motoristaUid)
+                _estado.value = _estado.value?.copy(acaoConcluida = Evento(Unit))
+            } catch (erro: RoteiroRepositorio.CaminhaoIncompativelException) {
+                _estado.value = _estado.value?.copy(erroAcao = Evento(erro.message ?: ""))
+            } catch (erro: RoteiroRepositorio.RoteiroJaIniciadoException) {
+                _estado.value = _estado.value?.copy(erroAcao = Evento(erro.message ?: ""))
+            } catch (erro: Exception) {
+                _estado.value = _estado.value?.copy(erroAcao = Evento("Sem conexão. Tente de novo"))
             }
         }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        registroCancelamento?.remove()
+    fun removerDoRoteiro(viagemId: String, roteiroId: String) {
+        viewModelScope.launch {
+            try {
+                RoteiroRepositorio.removerViagem(viagemId, roteiroId)
+                _estado.value = _estado.value?.copy(acaoConcluida = Evento(Unit))
+            } catch (erro: Exception) {
+                _estado.value = _estado.value?.copy(erroAcao = Evento("Sem conexão. Tente de novo"))
+            }
+        }
+    }
+
+    /** Não espera confirmação do servidor — mesmo raciocínio das escritas simples do motorista. */
+    fun marcarEntregue(viagemId: String) {
+        RoteiroRepositorio.marcarEntregue(viagemId)
+        _estado.value = _estado.value?.copy(acaoConcluida = Evento(Unit))
     }
 }
