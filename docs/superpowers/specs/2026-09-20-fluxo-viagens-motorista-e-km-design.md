@@ -68,10 +68,12 @@ Tocar num item abre `DetalhesViagemActivity` com o id da viagem.
   enquanto alguma viagem estiver em rota (mesmo comportamento de hoje).
 - Continua escutando cancelamento remoto (`ViagemRepositorio.
   escutarViagem`, hoje já existe em `ViagemEmAndamentoViewModel`)
-  enquanto a viagem estiver `EM_ROTA`: se o gerente cancelar, chama
+  enquanto a viagem estiver `EM_ROTA`: se o gerente cancelar, calcula o
+  `kmPercorridos` a partir dos pontos já salvos localmente (mesmo
+  cálculo do "Encerrar" — o caminhão rodou aquela distância de
+  verdade) e grava no documento da viagem (agora `CANCELADA`), chama
   `RastreamentoService.encerrar(context, viagemId)`, avisa o motorista
-  e volta pra lista de viagens em aberto — mesmo comportamento de
-  hoje, só que agora dentro da tela consolidada.
+  e volta pra lista de viagens em aberto.
 
 Arquivos removidos: `IniciarTransitoActivity.kt`,
 `IniciarTransitoViewModel.kt`, `ViagemEmAndamentoActivity.kt`,
@@ -123,8 +125,11 @@ chamar `RastreamentoService.encerrar(context, viagemId)`.
   tomada: menos escritas, sem risco de conflito).
 - **Total do pedido**: não é gravado — segue o mesmo padrão já usado
   pelo `status` do pedido ("não é gravado, é calculado"). O app
-  gerencial soma `kmPercorridos` de todas as viagens do pedido na hora
-  de exibir.
+  gerencial soma `kmPercorridos` das viagens do pedido na hora de
+  exibir, **excluindo as `CANCELADA`** — mesma regra já usada pros m³
+  no cálculo do saldo ("canceladas não contam"). O km de uma viagem
+  cancelada continua gravado e visível no histórico daquela viagem
+  específica, só não entra na soma do total.
 
 ## 4. Onde o km aparece
 
@@ -139,9 +144,11 @@ chamar `RastreamentoService.encerrar(context, viagemId)`.
   só existe no motorista) e o pedido (`PedidoRepositorio.buscarPorId`,
   já existe).
 - **`HistoricoPedidoActivity`** (gerencial): mostra o total de km do
-  pedido (soma de todas as viagens), perto do progresso de m³; cada
-  item da lista de viagens (`ViagemAdapter`) passa a mostrar também o
-  km daquela viagem específica, junto com m³/datas que já aparecem.
+  pedido (soma das viagens concluídas, excluindo canceladas), perto do
+  progresso de m³; cada item da lista de viagens (`ViagemAdapter`)
+  passa a mostrar também o km daquela viagem específica, junto com
+  m³/datas que já aparecem — inclusive nas viagens `CANCELADA` (o
+  formato de detalhes cancelada ganha o km, quando presente).
 
 ## Fora de escopo
 
