@@ -13,9 +13,12 @@ import kotlinx.coroutines.withTimeout
 /**
  * Monta e conduz o roteiro do motorista: adicionar/remover viagem (enquanto planejando),
  * iniciar, marcar entrega e encerrar (com o cálculo do rateio de km). Só o próprio motorista
- * mexe no seu roteiro — sem concorrência entre motoristas diferentes, então as escritas aqui não
- * precisam de transação (diferente de "atribuir viagem" no gerencial, que pode ter dois gerentes
- * mexendo no saldo do mesmo pedido ao mesmo tempo).
+ * mexe no seu roteiro — sem concorrência entre motoristas diferentes, então a maioria das
+ * escritas aqui não precisa de transação (diferente de "atribuir viagem" no gerencial, que pode
+ * ter dois gerentes mexendo no saldo do mesmo pedido ao mesmo tempo). A exceção é
+ * [marcarEntregue]: ali a concorrência não é com outro motorista, é com o próprio gerente, que
+ * pode cancelar a viagem remotamente enquanto o motorista está sem sinal — por isso ela usa
+ * transação, mesmo sendo uma escrita só do motorista.
  */
 object RoteiroRepositorio {
 
