@@ -98,8 +98,11 @@ class RastreamentoService : Service() {
             if (viagensAtivas.isEmpty()) {
                 callbackLocalizacao?.let { clienteLocalizacao.removeLocationUpdates(it) }
                 stopSelf()
+                return START_NOT_STICKY
             }
-            return START_NOT_STICKY
+            // Ainda sobra outra viagem ativa: o rastreamento continua valendo, então o Android
+            // deve tentar recriar o serviço se ele for morto.
+            return START_STICKY
         }
 
         val jaTinhaViagemAtiva = viagensAtivas.isNotEmpty()

@@ -123,8 +123,8 @@ class DetalhesViagemViewModel(application: Application) : AndroidViewModel(appli
                 viewModelScope.launch {
                     val km = PontoGpsRepositorio.calcularKmPercorridos(getApplication(), viagemId)
                     ViagemRepositorio.gravarKmPercorridos(viagemId, km)
+                    _estado.value = _estado.value?.copy(cancelamento = Evento(viagem.motivoCancelamento ?: ""))
                 }
-                _estado.value = _estado.value?.copy(cancelamento = Evento(viagem.motivoCancelamento ?: ""))
             }
         }
     }

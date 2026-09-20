@@ -11,13 +11,6 @@ object PontoGpsRepositorio {
 
     private const val RAIO_TERRA_METROS = 6_371_000.0
 
-    suspend fun contarTotalEPendentes(context: Context, viagemId: String): Pair<Int, Int> {
-        val dao = AppDatabase.obter(context).pontoGpsDao()
-        val total = dao.contarPorViagem(viagemId)
-        val pendentes = dao.contarPendentesPorViagem(viagemId)
-        return total to pendentes
-    }
-
     /**
      * Soma a distância (fórmula de Haversine) entre cada par de pontos consecutivos da viagem,
      * usando os pontos já salvos localmente (Room) — não depende de terem sincronizado com o

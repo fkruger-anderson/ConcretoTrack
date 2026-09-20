@@ -110,6 +110,7 @@
             android:layout_margin="16dp"
             android:background="#CCFFFFFF"
             android:padding="12dp"
+            android:text="@string/detalhes_viagem_sem_pontos"
             android:visibility="gone" />
 
     </FrameLayout>

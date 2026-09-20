@@ -10,9 +10,8 @@
     <string name="login_erro_generico">Não foi possível entrar. Verifique sua conexão e tente de novo</string>
 
     <string name="viagens_sair">Sair</string>
-    <string name="viagens_lista_vazia">Nenhuma viagem atribuída a você ainda</string>
+    <string name="viagens_lista_vazia">Nenhuma viagem em aberto no momento</string>
     <string name="viagens_erro_carregar">Não foi possível carregar suas viagens. Verifique sua conexão</string>
-    <string name="viagens_em_andamento">Viagem em andamento (pedido %1$s) — toque para continuar</string>
     <string name="viagens_boas_vindas">Bem-vindo, %1$s</string>
     <string name="viagens_item_detalhes_formato">%1$s m³ · caminhão %2$s</string>
     <string name="viagens_status_atribuida">Atribuída — toque para ver detalhes</string>
@@ -22,18 +21,12 @@
     <string name="iniciar_transito_m3_formato">%1$s m³</string>
     <string name="iniciar_transito_caminhao_formato">Caminhão: %1$s</string>
     <string name="iniciar_transito_erro_carregar">Não foi possível carregar a viagem. Verifique sua conexão</string>
-    <string name="iniciar_transito_sucesso">Trânsito iniciado</string>
 
     <string name="notificacao_rastreamento_canal">Rastreamento de viagem</string>
     <string name="notificacao_rastreamento_titulo">Viagem em andamento</string>
     <string name="notificacao_rastreamento_texto">Gravando sua localização até o fim da viagem</string>
 
-    <string name="andamento_titulo">Viagem em andamento</string>
-    <string name="andamento_pontos_formato">Pontos de GPS gravados: %1$d (pendentes de sincronizar: %2$d)</string>
-    <string name="andamento_botao_atualizar">Atualizar contagem</string>
-    <string name="andamento_botao_finalizar">Finalizar viagem</string>
     <string name="andamento_permissao_negada">Permissão de localização negada; o rastreamento não pode iniciar</string>
-    <string name="andamento_bateria_titulo">Ignorar otimização de bateria</string>
     <string name="andamento_bateria_texto">Para o rastreamento não ser interrompido, permita que o app ignore a otimização de bateria</string>
     <string name="andamento_bateria_botao">Ajustar</string>
     <string name="andamento_viagem_finalizada">Viagem finalizada</string>
@@ -45,6 +38,7 @@
     <string name="detalhes_viagem_confirmar_iniciar">Iniciar o trânsito?</string>
     <string name="detalhes_viagem_confirmar_encerrar">Finalizar a viagem?</string>
     <string name="detalhes_viagem_botao_encerrar">Encerrar</string>
+    <string name="detalhes_viagem_sem_pontos">Nenhum ponto de GPS registrado ainda</string>
 
     <string name="cancelar_viagem_confirmar">Confirmar</string>
     <string name="cancelar_viagem_voltar">Voltar</string>

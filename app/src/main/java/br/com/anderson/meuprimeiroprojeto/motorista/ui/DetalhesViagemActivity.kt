@@ -153,6 +153,15 @@ class DetalhesViagemActivity : AppCompatActivity(), OnMapReadyCallback {
             textKm.visibility = View.VISIBLE
             botaoAcao.text = getString(R.string.detalhes_viagem_botao_encerrar)
             verificarOtimizacaoDeBateria()
+            // Garante o rastreamento ativo mesmo se o serviço tiver sido morto pelo sistema
+            // (bateria, memória) e o motorista reabrir a viagem em rota: iniciar() é idempotente
+            // (RastreamentoService só reinicia o GPS se ainda não estava ligado para esta viagem).
+            if (ContextCompat.checkSelfPermission(
+                    this, Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                RastreamentoService.iniciar(this, viagemId)
+            }
         } else {
             textPeriodo.visibility = View.GONE
             textKm.visibility = View.GONE
@@ -224,8 +233,18 @@ class DetalhesViagemActivity : AppCompatActivity(), OnMapReadyCallback {
                     RastreamentoService.encerrar(this, viagemId)
                     viewModel.confirmarEncerramento(viagemId)
                 } else {
-                    viewModel.confirmarInicio(viagemId)
-                    pedirPermissaoDeSegundoPlanoEIniciarServico()
+                    val temLocalizacao = ContextCompat.checkSelfPermission(
+                        this, Manifest.permission.ACCESS_FINE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
+                    if (!temLocalizacao) {
+                        findViewById<TextView>(R.id.textAvisoPermissao).apply {
+                            text = getString(R.string.andamento_permissao_negada)
+                            visibility = View.VISIBLE
+                        }
+                    } else {
+                        viewModel.confirmarInicio(viagemId)
+                        pedirPermissaoDeSegundoPlanoEIniciarServico()
+                    }
                 }
             }
             .setNegativeButton(R.string.cancelar_viagem_voltar, null)
