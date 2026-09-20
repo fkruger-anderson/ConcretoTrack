@@ -27,15 +27,6 @@
             android:text="@string/viagens_sair" />
     </LinearLayout>
 
-    <Button
-        android:id="@+id/botaoViagemEmAndamento"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginBottom="8dp"
-        android:visibility="gone"
-        tools:text="Viagem em andamento — toque para continuar" />
-
     <TextView
         android:id="@+id/textListaVazia"
         android:layout_width="match_parent"

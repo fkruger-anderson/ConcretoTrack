@@ -10,11 +10,11 @@ object ViagemRepositorio {
 
     private val db get() = Firebase.firestore
 
-    /** Viagens atribuídas a este motorista que ele ainda não iniciou. */
-    suspend fun buscarAtribuidasDoMotorista(motoristaUid: String): List<Pair<String, ViagemRemota>> {
+    /** Viagens em aberto deste motorista: atribuídas (não iniciadas) ou em rota — a lista única da tela principal. */
+    suspend fun buscarAbertasDoMotorista(motoristaUid: String): List<Pair<String, ViagemRemota>> {
         val snapshot = db.collection("viagens")
             .whereEqualTo("motoristaUid", motoristaUid)
-            .whereEqualTo("status", StatusViagem.ATRIBUIDA.name)
+            .whereIn("status", listOf(StatusViagem.ATRIBUIDA.name, StatusViagem.EM_ROTA.name))
             .get()
             .aguardar()
         return snapshot.documents.mapNotNull { documento ->
@@ -68,18 +68,5 @@ object ViagemRepositorio {
                 val viagem = snapshot?.toObject(ViagemRemota::class.java) ?: return@addSnapshotListener
                 aoAtualizar(viagem)
             }
-    }
-
-    /** Usado para voltar à tela de rastreamento se o motorista sair dela sem finalizar. */
-    suspend fun buscarEmRotaDoMotorista(motoristaUid: String): Pair<String, ViagemRemota>? {
-        val snapshot = db.collection("viagens")
-            .whereEqualTo("motoristaUid", motoristaUid)
-            .whereEqualTo("status", StatusViagem.EM_ROTA.name)
-            .limit(1)
-            .get()
-            .aguardar()
-        val documento = snapshot.documents.firstOrNull() ?: return null
-        val remota = documento.toObject(ViagemRemota::class.java) ?: return null
-        return documento.id to remota
     }
 }

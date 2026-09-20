@@ -15,6 +15,8 @@
     <string name="viagens_em_andamento">Viagem em andamento (pedido %1$s) — toque para continuar</string>
     <string name="viagens_boas_vindas">Bem-vindo, %1$s</string>
     <string name="viagens_item_detalhes_formato">%1$s m³ · caminhão %2$s</string>
+    <string name="viagens_status_atribuida">Atribuída — toque para ver detalhes</string>
+    <string name="viagens_status_em_rota">Em rota — toque para ver detalhes</string>
 
     <string name="iniciar_transito_botao">Iniciar trânsito</string>
     <string name="iniciar_transito_m3_formato">%1$s m³</string>

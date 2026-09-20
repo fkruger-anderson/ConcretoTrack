@@ -36,7 +36,7 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         if (viewModel.jaEstaLogado()) {
-            abrirMinhasViagens()
+            abrirListaDeViagens()
             return
         }
 
@@ -69,12 +69,12 @@ class LoginActivity : AppCompatActivity() {
         textErro.visibility = if (mensagemErro != null) View.VISIBLE else View.GONE
         if (mensagemErro != null) textErro.text = mensagemErro
 
-        estado.sucesso?.getConteudoSeNaoTratado()?.let { abrirMinhasViagens() }
+        estado.sucesso?.getConteudoSeNaoTratado()?.let { abrirListaDeViagens() }
     }
 
     /** Abre a lista de viagens e encerra o login, para que o botão "voltar" não retorne pra ele. */
-    private fun abrirMinhasViagens() {
-        startActivity(Intent(this, MinhasViagensActivity::class.java))
+    private fun abrirListaDeViagens() {
+        startActivity(Intent(this, ViagensAbertasActivity::class.java))
         finish()
     }
 }

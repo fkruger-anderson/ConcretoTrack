@@ -12,22 +12,20 @@ import androidx.recyclerview.widget.RecyclerView
 import br.com.anderson.meuprimeiroprojeto.R
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.AutenticacaoRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.sessao.SessaoMotorista
-import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.MinhasViagensUiState
-import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.MinhasViagensViewModel
+import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.ViagensAbertasUiState
+import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.ViagensAbertasViewModel
 
-/** Lista as viagens que o gerente atribuiu a este motorista e que ainda não foram iniciadas. */
-class MinhasViagensActivity : AppCompatActivity() {
+/** Lista única das viagens em aberto do motorista (atribuídas ou em rota). */
+class ViagensAbertasActivity : AppCompatActivity() {
 
-    private val viewModel: MinhasViagensViewModel by viewModels()
+    private val viewModel: ViagensAbertasViewModel by viewModels()
 
     private lateinit var recyclerViagens: RecyclerView
     private lateinit var textListaVazia: TextView
-    private lateinit var botaoViagemEmAndamento: Button
 
-    /** Monta a tela (saudação, botão de sair, RecyclerView) e começa a observar o estado da ViewModel. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_minhas_viagens)
+        setContentView(R.layout.activity_viagens_abertas)
 
         findViewById<TextView>(R.id.textBoasVindas).text =
             getString(R.string.viagens_boas_vindas, SessaoMotorista.nomeMotorista(this))
@@ -42,32 +40,26 @@ class MinhasViagensActivity : AppCompatActivity() {
         recyclerViagens = findViewById(R.id.recyclerViagens)
         recyclerViagens.layoutManager = LinearLayoutManager(this)
         textListaVazia = findViewById(R.id.textListaVazia)
-        botaoViagemEmAndamento = findViewById(R.id.botaoViagemEmAndamento)
 
         viewModel.estado.observe(this) { estado -> exibirEstado(estado) }
     }
 
-    /** Recarrega a lista sempre que a tela volta a ficar visível (ex.: após finalizar uma viagem). */
+    /** Recarrega a lista sempre que a tela volta a ficar visível (ex.: após voltar da tela de detalhes). */
     override fun onResume() {
         super.onResume()
         val uid = AutenticacaoRepositorio.usuarioAtual?.uid ?: return
         viewModel.carregar(uid)
     }
 
-    /**
-     * Desenha a lista de viagens atribuídas (ou o aviso de lista vazia/erro) e o botão de
-     * "viagem em andamento", que só aparece se o motorista tiver deixado uma viagem em rota
-     * sem finalizar.
-     */
-    private fun exibirEstado(estado: MinhasViagensUiState) {
+    private fun exibirEstado(estado: ViagensAbertasUiState) {
         if (estado.erroAoCarregar) {
             textListaVazia.text = getString(R.string.viagens_erro_carregar)
             textListaVazia.visibility = View.VISIBLE
             recyclerViagens.visibility = View.GONE
         } else {
-            recyclerViagens.adapter = ViagemAtribuidaAdapter(estado.viagens) { item ->
-                val intent = Intent(this, IniciarTransitoActivity::class.java)
-                    .putExtra(IniciarTransitoActivity.EXTRA_VIAGEM_ID, item.viagemId)
+            recyclerViagens.adapter = ViagemAbertaAdapter(estado.viagens) { item ->
+                val intent = Intent(this, DetalhesViagemActivity::class.java)
+                    .putExtra(DetalhesViagemActivity.EXTRA_VIAGEM_ID, item.viagemId)
                 startActivity(intent)
             }
 
@@ -75,19 +67,6 @@ class MinhasViagensActivity : AppCompatActivity() {
             textListaVazia.text = getString(R.string.viagens_lista_vazia)
             textListaVazia.visibility = if (listaVazia) View.VISIBLE else View.GONE
             recyclerViagens.visibility = if (listaVazia) View.GONE else View.VISIBLE
-        }
-
-        val resumo = estado.viagemEmAndamento
-        if (resumo == null) {
-            botaoViagemEmAndamento.visibility = View.GONE
-        } else {
-            botaoViagemEmAndamento.text = getString(R.string.viagens_em_andamento, resumo.descricaoPedido)
-            botaoViagemEmAndamento.visibility = View.VISIBLE
-            botaoViagemEmAndamento.setOnClickListener {
-                val intent = Intent(this, ViagemEmAndamentoActivity::class.java)
-                    .putExtra(ViagemEmAndamentoActivity.EXTRA_VIAGEM_ID, resumo.viagemId)
-                startActivity(intent)
-            }
         }
     }
 }

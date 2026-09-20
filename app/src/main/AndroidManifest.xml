@@ -32,7 +32,10 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".motorista.ui.MinhasViagensActivity"
+            android:name=".motorista.ui.ViagensAbertasActivity"
+            android:exported="false" />
+        <activity
+            android:name=".motorista.ui.DetalhesViagemActivity"
             android:exported="false" />
         <activity
             android:name=".motorista.ui.IniciarTransitoActivity"
