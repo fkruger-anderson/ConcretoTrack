@@ -6,6 +6,8 @@ import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import br.com.anderson.meuprimeiroprojeto.gerencial.R
+import br.com.anderson.meuprimeiroprojeto.gerencial.formatarKm
+import br.com.anderson.meuprimeiroprojeto.gerencial.formatarM3
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.RotaViagemUiState
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.RotaViagemViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -17,6 +19,9 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /** Desenha no mapa o trajeto (pontos de GPS) que o motorista percorreu numa viagem. */
 class RotaViagemActivity : AppCompatActivity(), OnMapReadyCallback {
@@ -32,6 +37,11 @@ class RotaViagemActivity : AppCompatActivity(), OnMapReadyCallback {
     private var mapa: GoogleMap? = null
     private lateinit var viagemId: String
     private lateinit var textSemPontos: TextView
+    private val formatoData = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.forLanguageTag("pt-BR"))
+    private lateinit var textPedido: TextView
+    private lateinit var textQuantidade: TextView
+    private lateinit var textPeriodo: TextView
+    private lateinit var textKm: TextView
 
     /** Lê a viagem recebida por Intent, pede o GoogleMap assíncrono e manda carregar os pontos. */
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,6 +57,10 @@ class RotaViagemActivity : AppCompatActivity(), OnMapReadyCallback {
         viagemId = idRecebido
 
         textSemPontos = findViewById(R.id.textSemPontos)
+        textPedido = findViewById(R.id.textPedido)
+        textQuantidade = findViewById(R.id.textQuantidade)
+        textPeriodo = findViewById(R.id.textPeriodo)
+        textKm = findViewById(R.id.textKm)
 
         val fragmentoMapa = supportFragmentManager.findFragmentById(R.id.mapa) as SupportMapFragment
         fragmentoMapa.getMapAsync(this)
@@ -66,6 +80,19 @@ class RotaViagemActivity : AppCompatActivity(), OnMapReadyCallback {
     /** Desenha a Polyline do trajeto e os marcadores de início/fim a partir dos pontos de GPS. */
     private fun exibirEstado(estado: RotaViagemUiState) {
         if (!estado.carregado) return
+
+        textPedido.text = getString(R.string.rota_pedido_formato, estado.pedidoId, estado.destinatarioNome)
+        textQuantidade.text = getString(R.string.rota_quantidade_formato, formatarM3(estado.metrosCubicos))
+        val inicio = estado.dataInicio?.let { formatoData.format(Date(it)) } ?: ""
+        val fim = estado.dataFim?.let { formatoData.format(Date(it)) }
+        textPeriodo.text = if (fim != null) {
+            getString(R.string.rota_periodo_formato, inicio, fim)
+        } else {
+            getString(R.string.rota_inicio_formato, inicio)
+        }
+        textKm.text = estado.kmPercorridos?.let { getString(R.string.rota_km_formato, formatarKm(it)) } ?: ""
+        textKm.visibility = if (estado.kmPercorridos != null) View.VISIBLE else View.GONE
+
         val mapaAtual = mapa ?: return
 
         if (estado.pontos.isEmpty()) {

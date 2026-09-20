@@ -96,6 +96,12 @@ object ViagemRepositorio {
         }.aguardar()
     }
 
+    /** Busca uma viagem específica pelo id do documento — usado no painel de detalhes da tela de rota. */
+    suspend fun buscarPorId(viagemId: String): ViagemRemota? {
+        val documento = db.collection("viagens").document(viagemId).get().aguardar()
+        return documento.toObject(ViagemRemota::class.java)
+    }
+
     /** Histórico de viagens de um pedido, mais recentes primeiro — usado na tela de detalhe do pedido. */
     suspend fun listarPorPedido(pedidoId: Int): List<Pair<String, ViagemRemota>> {
         val snapshot = db.collection("viagens")

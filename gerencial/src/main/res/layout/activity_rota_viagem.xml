@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -8,6 +9,43 @@
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:id="@+id/painelDetalhes"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:orientation="vertical"
+        android:background="#E6FFFFFF"
+        android:padding="12dp">
+
+        <TextView
+            android:id="@+id/textPedido"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textStyle="bold"
+            tools:text="Pedido nº 4 — Construtora Alvorada Ltda" />
+
+        <TextView
+            android:id="@+id/textQuantidade"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            tools:text="6 m³" />
+
+        <TextView
+            android:id="@+id/textPeriodo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            tools:text="Início 20/09/2026 14:30 · Fim 20/09/2026 16:10" />
+
+        <TextView
+            android:id="@+id/textKm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textStyle="bold"
+            tools:text="18,4 km percorridos" />
+
+    </LinearLayout>
 
     <TextView
         android:id="@+id/textSemPontos"
