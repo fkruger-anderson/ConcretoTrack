@@ -38,7 +38,8 @@ class ItemRateioAdapter(
         holder.textPeso.text = contexto.getString(
             R.string.detalhes_roteiro_item_peso_formato,
             formatarM3(item.volumeM3),
-            formatarKm(item.distanciaDedicadaKm)
+            formatarKm(item.distanciaDedicadaKm),
+            formatarM3(item.pesoTeorico)
         )
         holder.textRateio.text = if (item.kmAtribuido != null) {
             val percentual = String.format(Locale.getDefault(), "%.1f", item.percentualRateio)

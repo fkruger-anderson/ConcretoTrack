@@ -20,6 +20,13 @@
             tools:text="Motorista: Carlos" />
 
         <TextView
+            android:id="@+id/textCaminhao"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            tools:text="Caminhão: ABC1234" />
+
+        <TextView
             android:id="@+id/textPeriodo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -62,8 +69,7 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerRateio"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:maxHeight="280dp"
+        android:layout_height="220dp"
         android:clipToPadding="false"
         android:padding="8dp" />
 

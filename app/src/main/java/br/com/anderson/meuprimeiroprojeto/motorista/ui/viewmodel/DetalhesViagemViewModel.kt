@@ -10,7 +10,9 @@ import br.com.anderson.meuprimeiroprojeto.motorista.backend.ViagemRemota
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.ViagemRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusRoteiro
 import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusViagem
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 /** Ação disponível no botão da tela de detalhes, conforme o estado da viagem/roteiro. */
 enum class AcaoViagem { ADICIONAR_AO_ROTEIRO, REMOVER_DO_ROTEIRO, MARCAR_ENTREGUE, NENHUMA }
@@ -29,6 +31,7 @@ data class DetalhesViagemUiState(
     val dataFim: Long? = null,
     val kmPercorridos: Double? = null,
     val acao: AcaoViagem = AcaoViagem.NENHUMA,
+    val carregando: Boolean = false,
     val erroAcao: Evento<String>? = null,
     val acaoConcluida: Evento<Unit>? = null
 )
@@ -38,6 +41,12 @@ data class DetalhesViagemUiState(
  * mapa/Room aqui: o trajeto ao vivo e o cálculo de km vivem na aba Roteiro agora.
  */
 class DetalhesViagemViewModel : ViewModel() {
+
+    companion object {
+        // Adicionar/remover do roteiro precisa de conexão na hora (lê e valida o roteiro no
+        // servidor) — sem isso o motorista ficaria esperando pra sempre.
+        private const val TEMPO_LIMITE_MS = 10_000L
+    }
 
     private val _estado = MutableLiveData(DetalhesViagemUiState())
     val estado: LiveData<DetalhesViagemUiState> = _estado
@@ -117,27 +126,39 @@ class DetalhesViagemViewModel : ViewModel() {
     }
 
     fun adicionarAoRoteiro(viagemId: String) {
+        _estado.value = _estado.value?.copy(carregando = true)
         viewModelScope.launch {
             try {
-                RoteiroRepositorio.adicionarViagem(viagemId, motoristaUid)
-                _estado.value = _estado.value?.copy(acaoConcluida = Evento(Unit))
+                withTimeout(TEMPO_LIMITE_MS) {
+                    RoteiroRepositorio.adicionarViagem(viagemId, motoristaUid)
+                }
+                _estado.value = _estado.value?.copy(carregando = false, acaoConcluida = Evento(Unit))
             } catch (erro: RoteiroRepositorio.CaminhaoIncompativelException) {
-                _estado.value = _estado.value?.copy(erroAcao = Evento(erro.message ?: ""))
+                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento(erro.message ?: ""))
             } catch (erro: RoteiroRepositorio.RoteiroJaIniciadoException) {
-                _estado.value = _estado.value?.copy(erroAcao = Evento(erro.message ?: ""))
+                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento(erro.message ?: ""))
+            } catch (erro: TimeoutCancellationException) {
+                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento("Sem conexão. Tente de novo"))
             } catch (erro: Exception) {
-                _estado.value = _estado.value?.copy(erroAcao = Evento("Sem conexão. Tente de novo"))
+                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento("Sem conexão. Tente de novo"))
             }
         }
     }
 
     fun removerDoRoteiro(viagemId: String, roteiroId: String) {
+        _estado.value = _estado.value?.copy(carregando = true)
         viewModelScope.launch {
             try {
-                RoteiroRepositorio.removerViagem(viagemId, roteiroId)
-                _estado.value = _estado.value?.copy(acaoConcluida = Evento(Unit))
+                withTimeout(TEMPO_LIMITE_MS) {
+                    RoteiroRepositorio.removerViagem(viagemId, roteiroId)
+                }
+                _estado.value = _estado.value?.copy(carregando = false, acaoConcluida = Evento(Unit))
+            } catch (erro: RoteiroRepositorio.RoteiroJaIniciadoException) {
+                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento(erro.message ?: ""))
+            } catch (erro: TimeoutCancellationException) {
+                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento("Sem conexão. Tente de novo"))
             } catch (erro: Exception) {
-                _estado.value = _estado.value?.copy(erroAcao = Evento("Sem conexão. Tente de novo"))
+                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento("Sem conexão. Tente de novo"))
             }
         }
     }

@@ -18,6 +18,7 @@ data class ItemRateio(
     val destinatarioNome: String,
     val volumeM3: Double,
     val distanciaDedicadaKm: Double,
+    val pesoTeorico: Double,
     val percentualRateio: Double,
     val kmAtribuido: Double?,
     val destacado: Boolean
@@ -28,6 +29,7 @@ data class DetalhesRoteiroUiState(
     val carregado: Boolean = false,
     val pontos: List<PontoGpsRemoto> = emptyList(),
     val motoristaNome: String = "",
+    val caminhaoPlaca: String = "",
     val status: String = "",
     val dataInicio: Long? = null,
     val dataFim: Long? = null,
@@ -101,6 +103,7 @@ class DetalhesRoteiroViewModel : ViewModel() {
                     destinatarioNome = pedido?.destinatarioNome ?: "",
                     volumeM3 = viagem.metrosCubicos,
                     distanciaDedicadaKm = distancia,
+                    pesoTeorico = pesoTeorico,
                     percentualRateio = percentual,
                     kmAtribuido = viagem.kmPercorridos,
                     destacado = id == viagemDestacadaId
@@ -111,6 +114,7 @@ class DetalhesRoteiroViewModel : ViewModel() {
                 carregado = true,
                 pontos = pontos,
                 motoristaNome = roteiro.motoristaNome,
+                caminhaoPlaca = roteiro.caminhaoPlaca,
                 status = roteiro.status,
                 dataInicio = roteiro.dataInicio,
                 dataFim = roteiro.dataFim,

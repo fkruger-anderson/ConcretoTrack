@@ -114,6 +114,7 @@ class DetalhesViagemActivity : AppCompatActivity() {
             }
             AcaoViagem.NENHUMA -> botaoAcao.visibility = View.GONE
         }
+        botaoAcao.isEnabled = !estado.carregando
 
         estado.erroAcao?.getConteudoSeNaoTratado()?.let { mensagem ->
             Toast.makeText(this, mensagem, Toast.LENGTH_LONG).show()

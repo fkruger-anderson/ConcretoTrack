@@ -1,11 +1,20 @@
 package br.com.anderson.meuprimeiroprojeto.motorista.ui
 
+import android.Manifest
 import android.app.AlertDialog
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -13,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView
 import br.com.anderson.meuprimeiroprojeto.R
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.AutenticacaoRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusRoteiro
+import br.com.anderson.meuprimeiroprojeto.motorista.gps.RastreamentoService
 import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.RoteiroUiState
 import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.RoteiroViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -37,8 +47,36 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
     private lateinit var botaoIniciarRoteiro: Button
     private lateinit var containerMapa: View
     private lateinit var botaoEncerrarRoteiro: Button
+    private lateinit var textAvisoPermissao: TextView
+    private lateinit var botaoAjustarBateria: Button
+    private lateinit var textBateria: TextView
     private var mapa: GoogleMap? = null
     private var estadoAtual: RoteiroUiState = RoteiroUiState()
+
+    /**
+     * Pede localização fina/aproximada (e notificações, no Android 13+) pra o rastreamento poder
+     * funcionar. Se concedida e o roteiro já estava EM_ROTA ao abrir a tela (ex.: o serviço foi
+     * morto pelo sistema enquanto o app estava fechado), retoma o rastreamento na hora.
+     */
+    private val launcherPermissoesLocalizacao =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { resultados ->
+            val localizacaoConcedida = resultados[Manifest.permission.ACCESS_FINE_LOCATION] == true
+            if (localizacaoConcedida) {
+                reasserirRastreamentoSeEmRota()
+            } else {
+                mostrarAvisoPermissaoNegada()
+            }
+        }
+
+    /**
+     * Pede localização em segundo plano ao iniciar o roteiro. Concedida ou não, prossegue: sem
+     * ela o rastreamento ainda funciona com o app em primeiro plano, só perde precisão quando o
+     * motorista troca de app.
+     */
+    private val launcherPermissaoSegundoPlano =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+            viewModel.iniciarRoteiro()
+        }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -49,6 +87,9 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         botaoIniciarRoteiro = view.findViewById(R.id.botaoIniciarRoteiro)
         containerMapa = view.findViewById(R.id.containerMapa)
         botaoEncerrarRoteiro = view.findViewById(R.id.botaoEncerrarRoteiro)
+        textAvisoPermissao = view.findViewById(R.id.textAvisoPermissao)
+        botaoAjustarBateria = view.findViewById(R.id.botaoAjustarBateria)
+        textBateria = view.findViewById(R.id.textBateria)
 
         botaoIniciarRoteiro.setOnClickListener { confirmarIniciarRoteiro() }
         botaoEncerrarRoteiro.setOnClickListener { confirmarEncerrarRoteiro() }
@@ -57,12 +98,15 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         fragmentoMapa.getMapAsync(this)
 
         viewModel.estado.observe(viewLifecycleOwner) { estado -> exibirEstado(estado) }
+
+        pedirPermissaoDeLocalizacao()
     }
 
     override fun onResume() {
         super.onResume()
         val uid = AutenticacaoRepositorio.usuarioAtual?.uid ?: return
         viewModel.carregar(uid)
+        verificarOtimizacaoDeBateria()
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -80,6 +124,8 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
             botaoIniciarRoteiro.visibility = View.GONE
             containerMapa.visibility = View.GONE
             botaoEncerrarRoteiro.visibility = View.GONE
+            botaoAjustarBateria.visibility = View.GONE
+            textBateria.visibility = View.GONE
             return
         }
 
@@ -91,10 +137,21 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
 
         val emRota = estado.status == StatusRoteiro.EM_ROTA.name
         botaoIniciarRoteiro.visibility = if (!emRota) View.VISIBLE else View.GONE
-        botaoIniciarRoteiro.isEnabled = estado.podeIniciar
+        botaoIniciarRoteiro.isEnabled = estado.podeIniciar && !estado.carregando
         containerMapa.visibility = if (emRota) View.VISIBLE else View.GONE
         botaoEncerrarRoteiro.visibility = if (emRota) View.VISIBLE else View.GONE
-        botaoEncerrarRoteiro.isEnabled = estado.podeEncerrar
+        botaoEncerrarRoteiro.isEnabled = estado.podeEncerrar && !estado.carregando
+
+        if (emRota) {
+            // Garante o rastreamento ativo mesmo se o serviço tiver sido morto pelo sistema
+            // (bateria, memória) e o motorista reabrir o roteiro em rota: iniciar() é idempotente
+            // (RastreamentoService só reinicia o GPS se ainda não estava ligado para este roteiro).
+            reasserirRastreamentoSeEmRota()
+            verificarOtimizacaoDeBateria()
+        } else {
+            botaoAjustarBateria.visibility = View.GONE
+            textBateria.visibility = View.GONE
+        }
 
         desenharTrajeto(estado)
 
@@ -109,9 +166,9 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
     /** Desenha a Polyline do trajeto percorrido até agora (só faz sentido com o roteiro em rota). */
     private fun desenharTrajeto(estado: RoteiroUiState) {
         val mapaAtual = mapa ?: return
+        mapaAtual.clear()
         if (estado.status != StatusRoteiro.EM_ROTA.name || estado.pontos.isEmpty()) return
 
-        mapaAtual.clear()
         val posicoes = estado.pontos.map { LatLng(it.latitude, it.longitude) }
         mapaAtual.addPolyline(PolylineOptions().addAll(posicoes).width(8f))
         if (posicoes.size == 1) {
@@ -125,9 +182,36 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
     private fun confirmarIniciarRoteiro() {
         AlertDialog.Builder(requireContext())
             .setTitle(R.string.roteiro_confirmar_iniciar)
-            .setPositiveButton(R.string.cancelar_viagem_confirmar) { _, _ -> viewModel.iniciarRoteiro() }
+            .setPositiveButton(R.string.cancelar_viagem_confirmar) { _, _ -> iniciarRoteiroComPermissoes() }
             .setNegativeButton(R.string.cancelar_viagem_voltar, null)
             .show()
+    }
+
+    /**
+     * Sem localização concedida não adianta nem tentar (o serviço se mataria sozinho ao checar a
+     * permissão) — mostra o aviso e não inicia nada. Com localização mas sem segundo plano, pede
+     * segundo plano antes de iniciar (o callback do launcher chama iniciarRoteiro independente da
+     * resposta). Com tudo concedido, inicia direto.
+     */
+    private fun iniciarRoteiroComPermissoes() {
+        val temLocalizacao = ContextCompat.checkSelfPermission(
+            requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!temLocalizacao) {
+            mostrarAvisoPermissaoNegada()
+            return
+        }
+
+        val temSegundoPlano = ContextCompat.checkSelfPermission(
+            requireContext(), Manifest.permission.ACCESS_BACKGROUND_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (temSegundoPlano) {
+            viewModel.iniciarRoteiro()
+        } else {
+            launcherPermissaoSegundoPlano.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
     }
 
     private fun confirmarEncerrarRoteiro() {
@@ -136,5 +220,70 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
             .setPositiveButton(R.string.cancelar_viagem_confirmar) { _, _ -> viewModel.encerrarRoteiro() }
             .setNegativeButton(R.string.cancelar_viagem_voltar, null)
             .show()
+    }
+
+    private fun mostrarAvisoPermissaoNegada() {
+        textAvisoPermissao.apply {
+            text = getString(R.string.andamento_permissao_negada)
+            visibility = View.VISIBLE
+        }
+    }
+
+    private fun pedirPermissaoDeLocalizacao() {
+        val jaTemLocalizacao = ContextCompat.checkSelfPermission(
+            requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (jaTemLocalizacao) return
+
+        val permissoes = mutableListOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissoes.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        launcherPermissoesLocalizacao.launch(permissoes.toTypedArray())
+    }
+
+    /**
+     * Chama [RastreamentoService.iniciar] de novo se o roteiro atual estiver EM_ROTA e a
+     * localização estiver concedida — idempotente, seguro chamar sempre. É o que recupera o
+     * rastreamento se o serviço tiver sido morto pelo sistema (bateria, memória) enquanto o app
+     * estava fechado.
+     */
+    private fun reasserirRastreamentoSeEmRota() {
+        val roteiroId = estadoAtual.roteiroId ?: return
+        if (estadoAtual.status != StatusRoteiro.EM_ROTA.name) return
+        val temPermissao = ContextCompat.checkSelfPermission(
+            requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (temPermissao) {
+            RastreamentoService.iniciar(requireContext(), roteiroId)
+        }
+    }
+
+    /**
+     * Mostra o botão de ajustar a otimização de bateria enquanto o roteiro está EM_ROTA e o app
+     * ainda não está isento dela (Android pode matar o serviço de rastreamento pra economizar
+     * bateria). Some fora do EM_ROTA ou quando não há roteiro algum.
+     */
+    private fun verificarOtimizacaoDeBateria() {
+        if (estadoAtual.status != StatusRoteiro.EM_ROTA.name || !estadoAtual.temRoteiro) {
+            botaoAjustarBateria.visibility = View.GONE
+            textBateria.visibility = View.GONE
+            return
+        }
+        val powerManager = requireContext().getSystemService(PowerManager::class.java)
+        val ignorandoOtimizacao = powerManager.isIgnoringBatteryOptimizations(requireContext().packageName)
+        botaoAjustarBateria.visibility = if (ignorandoOtimizacao) View.GONE else View.VISIBLE
+        textBateria.visibility = botaoAjustarBateria.visibility
+        botaoAjustarBateria.setOnClickListener {
+            startActivity(
+                Intent(
+                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    Uri.parse("package:${requireContext().packageName}")
+                )
+            )
+        }
     }
 }

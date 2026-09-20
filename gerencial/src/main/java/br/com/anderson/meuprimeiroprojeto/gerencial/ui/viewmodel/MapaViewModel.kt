@@ -11,7 +11,8 @@ data class CaminhaoEmRota(
     val roteiroId: String,
     val latitude: Double,
     val longitude: Double,
-    val motoristaNome: String
+    val motoristaNome: String,
+    val caminhaoPlaca: String = ""
 )
 
 /** Estado exibido por [MapaFragment][br.com.anderson.meuprimeiroprojeto.gerencial.ui.MapaFragment]. */
@@ -41,7 +42,8 @@ class MapaViewModel : ViewModel() {
                     roteiroId = roteiroId,
                     latitude = lat,
                     longitude = lng,
-                    motoristaNome = roteiro.motoristaNome
+                    motoristaNome = roteiro.motoristaNome,
+                    caminhaoPlaca = roteiro.caminhaoPlaca
                 )
             }
             _estado.value = MapaUiState(caminhoes)

@@ -15,7 +15,9 @@ import br.com.anderson.meuprimeiroprojeto.motorista.db.PontoGpsRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusRoteiro
 import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusViagem
 import br.com.anderson.meuprimeiroprojeto.motorista.gps.RastreamentoService
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 /** Uma viagem do roteiro atual, já com o nome do destinatário resolvido. */
 data class ViagemDoRoteiro(val viagemId: String, val viagem: ViagemRemota, val destinatarioNome: String)
@@ -30,6 +32,7 @@ data class RoteiroUiState(
     val pontos: List<PontoGps> = emptyList(),
     val podeIniciar: Boolean = false,
     val podeEncerrar: Boolean = false,
+    val carregando: Boolean = false,
     val erro: Evento<String>? = null,
     val roteiroEncerrado: Evento<Unit>? = null
 )
@@ -39,6 +42,12 @@ data class RoteiroUiState(
  * GPS) e do Context pra chamar o [RastreamentoService].
  */
 class RoteiroViewModel(application: Application) : AndroidViewModel(application) {
+
+    companion object {
+        // Encerrar precisa de conexão na hora (grava o rateio de km) — sem isso o motorista
+        // ficaria esperando pra sempre, então cortamos e mostramos erro genérico.
+        private const val TEMPO_LIMITE_MS = 10_000L
+    }
 
     private val _estado = MutableLiveData(RoteiroUiState())
     val estado: LiveData<RoteiroUiState> = _estado
@@ -92,17 +101,26 @@ class RoteiroViewModel(application: Application) : AndroidViewModel(application)
                 status = roteiro.status,
                 viagens = viagens,
                 pontos = pontos,
-                podeIniciar = roteiro.status == StatusRoteiro.PLANEJANDO.name && viagens.isNotEmpty(),
+                podeIniciar = roteiro.status == StatusRoteiro.PLANEJANDO.name &&
+                    viagens.any { (_, viagem, _) -> viagem.status == StatusViagem.ATRIBUIDA.name },
                 podeEncerrar = emRota && todasResolvidas
             )
         }
     }
 
-    /** Não espera confirmação do servidor — mesma escrita simples usada em todo o app motorista. */
+    /**
+     * Não espera confirmação do servidor — mesma escrita simples usada em todo o app motorista.
+     * Só as viagens ainda ATRIBUIDA entram no lote: uma viagem que o gerente cancelou depois de
+     * adicionada ao roteiro (ainda PLANEJANDO) já teve seu m³ devolvido ao saldo do pedido — não
+     * pode ser ressuscitada pra EM_ROTA aqui.
+     */
     fun iniciarRoteiro() {
         val estado = _estado.value ?: return
         val roteiroId = estado.roteiroId ?: return
-        RoteiroRepositorio.iniciarRoteiro(roteiroId, estado.viagens.map { it.viagemId })
+        val viagemIdsAtribuidas = estado.viagens
+            .filter { it.viagem.status == StatusViagem.ATRIBUIDA.name }
+            .map { it.viagemId }
+        RoteiroRepositorio.iniciarRoteiro(roteiroId, viagemIdsAtribuidas)
         RastreamentoService.iniciar(getApplication(), roteiroId)
         carregar(motoristaUid)
     }
@@ -120,23 +138,35 @@ class RoteiroViewModel(application: Application) : AndroidViewModel(application)
      */
     fun encerrarRoteiro() {
         val roteiroId = _estado.value?.roteiroId ?: return
+        _estado.value = _estado.value?.copy(carregando = true)
         viewModelScope.launch {
             try {
-                val viagens = ViagemRepositorio.buscarPorRoteiro(roteiroId)
-                val pedidoIds = viagens.map { (_, viagem) -> viagem.pedidoId }.distinct()
-                val distancias = pedidoIds.associateWith { id ->
-                    try {
-                        PedidoRepositorio.buscarPorId(id)?.distanciaDedicadaKm ?: 0.0
-                    } catch (erro: Exception) {
-                        0.0
+                withTimeout(TEMPO_LIMITE_MS) {
+                    val viagens = ViagemRepositorio.buscarPorRoteiro(roteiroId)
+                    val pedidoIds = viagens.map { (_, viagem) -> viagem.pedidoId }.distinct()
+                    val distancias = pedidoIds.associateWith { id ->
+                        try {
+                            PedidoRepositorio.buscarPorId(id)?.distanciaDedicadaKm ?: 0.0
+                        } catch (erro: Exception) {
+                            0.0
+                        }
                     }
+                    val km = PontoGpsRepositorio.calcularKmPercorridos(getApplication(), roteiroId)
+                    RoteiroRepositorio.encerrarRoteiro(roteiroId, km, viagens, distancias)
                 }
-                val km = PontoGpsRepositorio.calcularKmPercorridos(getApplication(), roteiroId)
-                RoteiroRepositorio.encerrarRoteiro(roteiroId, km, viagens, distancias)
                 RastreamentoService.encerrar(getApplication(), roteiroId)
-                _estado.value = _estado.value?.copy(roteiroEncerrado = Evento(Unit))
+                _estado.value = _estado.value?.copy(carregando = false, roteiroEncerrado = Evento(Unit))
+                carregar(motoristaUid)
+            } catch (erro: TimeoutCancellationException) {
+                _estado.value = _estado.value?.copy(
+                    carregando = false,
+                    erro = Evento("Sem conexão. Tente encerrar de novo")
+                )
             } catch (erro: Exception) {
-                _estado.value = _estado.value?.copy(erro = Evento("Sem conexão. Tente encerrar de novo"))
+                _estado.value = _estado.value?.copy(
+                    carregando = false,
+                    erro = Evento("Sem conexão. Tente encerrar de novo")
+                )
             }
         }
     }

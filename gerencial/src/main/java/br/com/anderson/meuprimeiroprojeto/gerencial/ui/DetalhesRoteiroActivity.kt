@@ -41,6 +41,7 @@ class DetalhesRoteiroActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var roteiroId: String
     private lateinit var textSemPontos: TextView
     private lateinit var textMotorista: TextView
+    private lateinit var textCaminhao: TextView
     private lateinit var textPeriodo: TextView
     private lateinit var textKmTotal: TextView
     private lateinit var recyclerRateio: RecyclerView
@@ -61,6 +62,7 @@ class DetalhesRoteiroActivity : AppCompatActivity(), OnMapReadyCallback {
 
         textSemPontos = findViewById(R.id.textSemPontos)
         textMotorista = findViewById(R.id.textMotorista)
+        textCaminhao = findViewById(R.id.textCaminhao)
         textPeriodo = findViewById(R.id.textPeriodo)
         textKmTotal = findViewById(R.id.textKmTotal)
         recyclerRateio = findViewById(R.id.recyclerRateio)
@@ -82,6 +84,7 @@ class DetalhesRoteiroActivity : AppCompatActivity(), OnMapReadyCallback {
         if (!estado.carregado) return
 
         textMotorista.text = getString(R.string.detalhes_roteiro_motorista_formato, estado.motoristaNome)
+        textCaminhao.text = getString(R.string.detalhes_roteiro_caminhao_formato, estado.caminhaoPlaca)
 
         val inicio = estado.dataInicio?.let { formatoData.format(Date(it)) } ?: ""
         val fim = estado.dataFim

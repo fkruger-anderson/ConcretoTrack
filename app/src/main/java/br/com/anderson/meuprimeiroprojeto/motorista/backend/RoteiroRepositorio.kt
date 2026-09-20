@@ -1,5 +1,6 @@
 package br.com.anderson.meuprimeiroprojeto.motorista.backend
 
+import android.util.Log
 import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusRoteiro
 import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusViagem
 import com.google.firebase.Firebase
@@ -13,6 +14,8 @@ import com.google.firebase.firestore.firestore
  * mexendo no saldo do mesmo pedido ao mesmo tempo).
  */
 object RoteiroRepositorio {
+
+    private const val TAG = "RoteiroRepositorio"
 
     private val db get() = Firebase.firestore
 
@@ -60,6 +63,7 @@ object RoteiroRepositorio {
             val novoRoteiro = RoteiroRemota(
                 motoristaUid = motoristaUid,
                 motoristaNome = viagem.motoristaNome,
+                caminhaoPlaca = viagem.caminhaoPlaca,
                 status = StatusRoteiro.PLANEJANDO.name
             )
             novoRef.set(novoRoteiro).aguardar()
@@ -128,8 +132,8 @@ object RoteiroRepositorio {
 
     /**
      * Encerra o roteiro: rateia o [kmTotalRota] entre as viagens CONCLUIDA por peso
-     * (volume × distância dedicada do pedido) — canceladas ficam de fora do rateio (peso zero).
-     * A última viagem (por `dataAtribuicao`, ordem estável) recebe o resto da divisão, garantindo
+     * (volume × distância dedicada do pedido) — canceladas ficam de fora do rateio (não entram
+     * no pesoTotal). A última viagem (por `dataAtribuicao`, ordem estável) recebe o resto da divisão, garantindo
      * que a soma dos km atribuídos seja exatamente igual a [kmTotalRota] mesmo com arredondamento
      * de ponto flutuante. [viagens] e [distanciasPorPedido] já vêm prontos de quem chamou (a
      * ViewModel, que tem acesso ao Room pra calcular [kmTotalRota] via Haversine).
@@ -164,6 +168,12 @@ object RoteiroRepositorio {
                     }
                     lote.update(db.collection("viagens").document(viagemId), "kmPercorridos", kmAtribuido)
                 }
+            } else {
+                Log.w(
+                    TAG,
+                    "Roteiro $roteiroId: pesoTotal <= 0 (volume ou distância dedicada zerados) — " +
+                        "nenhuma viagem recebeu kmPercorridos no rateio"
+                )
             }
         }
 
