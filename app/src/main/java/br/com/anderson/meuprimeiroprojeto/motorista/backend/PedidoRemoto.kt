@@ -1,8 +1,10 @@
 package br.com.anderson.meuprimeiroprojeto.motorista.backend
 
 /**
- * Documento em `pedidos/{id}` no Firestore. `m3Alocados` é mantido atômico pela
- * transação de [ViagemRepositorio.iniciarViagem] — é dele que vem o saldo real.
+ * Documento em `pedidos/{id}` no Firestore. `m3Alocados` é mantido atômico pela transação de
+ * `ViagemRepositorio.atribuir`, no app gerencial (módulo `:gerencial`) — é lá que o saldo é
+ * reservado no momento em que o gerente atribui uma viagem. O app do motorista só lê esse valor,
+ * nunca escreve nele.
  */
 data class PedidoRemoto(
     val destinatarioNome: String = "",

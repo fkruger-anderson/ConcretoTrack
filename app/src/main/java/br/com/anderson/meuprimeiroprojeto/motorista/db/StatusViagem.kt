@@ -2,7 +2,8 @@ package br.com.anderson.meuprimeiroprojeto.motorista.db
 
 /**
  * Situação de uma viagem, espelhando o campo `status` do documento no Firestore.
- * Cancelamento (com motivo) chega na etapa 6.
+ * Quem cancela é o gerente, pelo app gerencial (`ViagemRepositorio.cancelar`) — o app do
+ * motorista só lê o status CANCELADA quando isso acontece (ex.: enquanto está em rota).
  */
 enum class StatusViagem {
     /** Criada pelo gerente, com m³ já reservado do saldo do pedido, aguardando o motorista iniciar. */

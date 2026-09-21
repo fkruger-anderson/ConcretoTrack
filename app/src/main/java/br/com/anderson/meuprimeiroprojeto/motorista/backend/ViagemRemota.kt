@@ -1,6 +1,11 @@
 package br.com.anderson.meuprimeiroprojeto.motorista.backend
 
-/** Documento em `viagens/{id}` no Firestore. */
+/**
+ * Documento em `viagens/{id}` no Firestore — uma viagem (caminhão levando parte de um pedido),
+ * criada pelo gerente ao atribuir. `motoristaNome`, `motoristaCpf` e `caminhaoPlaca` são
+ * denormalizados (copiados na hora da atribuição, além do `motoristaUid`) pra exibir esses dados
+ * sem precisar de uma consulta extra — mesma ideia usada em [RoteiroRemota].
+ */
 data class ViagemRemota(
     val pedidoId: Int = 0,
     val motoristaUid: String = "",
