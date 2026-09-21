@@ -9,12 +9,17 @@ import androidx.recyclerview.widget.RecyclerView
 import br.com.anderson.meuprimeiroprojeto.R
 import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusViagem
 import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.ViagemDoRoteiro
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /** Lista das viagens do roteiro atual, com um botão "marcar como entregue" por item pendente. */
 class ViagemDoRoteiroAdapter(
     private val itens: List<ViagemDoRoteiro>,
     private val aoMarcarEntregue: (viagemId: String) -> Unit
 ) : RecyclerView.Adapter<ViagemDoRoteiroAdapter.ViewHolder>() {
+
+    private val formatoHorario = SimpleDateFormat("HH:mm", Locale.forLanguageTag("pt-BR"))
 
     /**
      * Guarda as referências das views de um item já inflado (`findViewById` só uma vez por item
@@ -43,17 +48,23 @@ class ViagemDoRoteiroAdapter(
 
         val pendente = item.viagem.status != StatusViagem.CONCLUIDA.name &&
             item.viagem.status != StatusViagem.CANCELADA.name
-        holder.textStatus.text = contexto.getString(
-            when (item.viagem.status) {
-                StatusViagem.CONCLUIDA.name -> R.string.roteiro_item_entregue
-                StatusViagem.CANCELADA.name -> R.string.roteiro_item_cancelada
-                else -> R.string.roteiro_item_pendente
-            }
-        )
+        holder.textStatus.text = when (item.viagem.status) {
+            StatusViagem.CONCLUIDA.name -> contexto.getString(
+                R.string.roteiro_item_entregue_formato, formatarHorario(item.viagem.dataFim)
+            )
+            StatusViagem.CANCELADA.name -> contexto.getString(
+                R.string.roteiro_item_cancelada_formato, formatarHorario(item.viagem.dataCancelamento)
+            )
+            else -> contexto.getString(R.string.roteiro_item_pendente)
+        }
         holder.botaoEntregue.visibility = if (pendente) View.VISIBLE else View.GONE
         holder.botaoEntregue.setOnClickListener { aoMarcarEntregue(item.viagemId) }
     }
 
     /** Total de itens da lista; o RecyclerView usa isso pra saber quantas posições existem. */
     override fun getItemCount(): Int = itens.size
+
+    /** Formata o horário (HH:mm) de entrega/cancelamento; vazio se, por algum motivo, não vier preenchido. */
+    private fun formatarHorario(horario: Long?): String =
+        if (horario != null) formatoHorario.format(Date(horario)) else ""
 }

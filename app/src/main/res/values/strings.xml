@@ -49,8 +49,8 @@
     <string name="roteiro_confirmar_encerrar">Encerrar o roteiro? Só é possível se todas as entregas já estiverem resolvidas</string>
     <string name="roteiro_encerrado_sucesso">Roteiro encerrado</string>
     <string name="roteiro_item_pendente">Pendente</string>
-    <string name="roteiro_item_entregue">Entregue</string>
-    <string name="roteiro_item_cancelada">Cancelada</string>
+    <string name="roteiro_item_entregue_formato">Entregue às %1$s</string>
+    <string name="roteiro_item_cancelada_formato">Cancelada às %1$s</string>
 
     <string name="erro_sem_conexao_tentar_novo">Sem conexão. Tente de novo</string>
     <string name="erro_sem_conexao_encerrar">Sem conexão. Tente encerrar de novo</string>
