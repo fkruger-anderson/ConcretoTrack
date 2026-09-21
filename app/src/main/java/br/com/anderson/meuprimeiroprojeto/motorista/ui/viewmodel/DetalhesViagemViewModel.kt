@@ -55,6 +55,11 @@ class DetalhesViagemViewModel(application: Application) : AndroidViewModel(appli
 
     private lateinit var motoristaUid: String
 
+    /**
+     * Busca a viagem e o pedido associado, decide qual ação o botão deve oferecer (ver
+     * [decidirAcao]) e publica tudo em [estado] de uma vez. Se a viagem não for encontrada,
+     * marca [DetalhesViagemUiState.erroAoCarregar].
+     */
     fun carregar(viagemId: String, motoristaUid: String) {
         this.motoristaUid = motoristaUid
         viewModelScope.launch {
@@ -127,6 +132,11 @@ class DetalhesViagemViewModel(application: Application) : AndroidViewModel(appli
         }
     }
 
+    /**
+     * Adiciona a viagem ao roteiro do motorista no servidor. Precisa de conexão na hora (lê e
+     * valida o roteiro atual), por isso usa [withTimeout]: sem resposta em [TEMPO_LIMITE_MS],
+     * desiste e mostra erro em vez de deixar o motorista esperando pra sempre.
+     */
     fun adicionarAoRoteiro(viagemId: String) {
         _estado.value = _estado.value?.copy(carregando = true)
         viewModelScope.launch {
@@ -147,6 +157,11 @@ class DetalhesViagemViewModel(application: Application) : AndroidViewModel(appli
         }
     }
 
+    /**
+     * Remove a viagem do roteiro (planejando) do motorista no servidor. Mesma lógica de tempo
+     * limite de [adicionarAoRoteiro]: precisa de conexão na hora, então desiste depois de
+     * [TEMPO_LIMITE_MS] em vez de travar a tela esperando.
+     */
     fun removerDoRoteiro(viagemId: String, roteiroId: String) {
         _estado.value = _estado.value?.copy(carregando = true)
         viewModelScope.launch {

@@ -78,6 +78,11 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
             viewModel.iniciarRoteiro()
         }
 
+    /**
+     * Liga as views do layout inflado (o `Fragment(R.layout...)` do construtor já infla, aqui só
+     * resta buscar os ids), prepara o mapa embutido (SupportMapFragment) de forma assíncrona e
+     * começa a observar o [estado][RoteiroViewModel.estado] da ViewModel.
+     */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -102,6 +107,7 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         pedirPermissaoDeLocalizacao()
     }
 
+    /** Recarrega o roteiro e reavalia a isenção de bateria sempre que a aba volta a ficar visível. */
     override fun onResume() {
         super.onResume()
         val uid = AutenticacaoRepositorio.usuarioAtual?.uid ?: return
@@ -109,6 +115,11 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         verificarOtimizacaoDeBateria()
     }
 
+    /**
+     * Callback do `SupportMapFragment` chamado quando o Google Maps termina de carregar de forma
+     * assíncrona. Antes disso o mapa não existe, então [desenharTrajeto] não pode ser chamado —
+     * por isso o trajeto só é desenhado aqui e nas atualizações de estado seguintes.
+     */
     override fun onMapReady(googleMap: GoogleMap) {
         mapa = googleMap
         desenharTrajeto(estadoAtual)
@@ -121,6 +132,11 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         recyclerViagensRoteiro.adapter = null
     }
 
+    /**
+     * Redesenha a aba inteira a partir do estado da ViewModel: sem roteiro esconde tudo, com
+     * roteiro mostra a lista de viagens e alterna entre os controles de "planejando" (botão
+     * iniciar) e "em rota" (mapa, botão encerrar, aviso de bateria).
+     */
     private fun exibirEstado(estado: RoteiroUiState) {
         estadoAtual = estado
         if (!estado.carregado) return
@@ -186,6 +202,7 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         }
     }
 
+    /** Confirma com o motorista antes de iniciar o roteiro (liga o GPS), usando AlertDialog. */
     private fun confirmarIniciarRoteiro() {
         AlertDialog.Builder(requireContext())
             .setTitle(R.string.roteiro_confirmar_iniciar)
@@ -221,6 +238,7 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         }
     }
 
+    /** Confirma com o motorista antes de encerrar o roteiro (desliga o GPS), usando AlertDialog. */
     private fun confirmarEncerrarRoteiro() {
         AlertDialog.Builder(requireContext())
             .setTitle(R.string.roteiro_confirmar_encerrar)
@@ -236,6 +254,11 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         }
     }
 
+    /**
+     * Pede localização fina e aproximada assim que a aba abre (se ainda não concedidas), e no
+     * Android 13+ pede também a permissão de notificações — exigida ali para mostrar a notificação
+     * fixa do foreground service de rastreamento.
+     */
     private fun pedirPermissaoDeLocalizacao() {
         val jaTemLocalizacao = ContextCompat.checkSelfPermission(
             requireContext(), Manifest.permission.ACCESS_FINE_LOCATION

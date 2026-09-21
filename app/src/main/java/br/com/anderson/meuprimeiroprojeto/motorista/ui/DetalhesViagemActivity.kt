@@ -39,6 +39,11 @@ class DetalhesViagemActivity : AppCompatActivity() {
     private lateinit var textErro: TextView
     private var estadoAtual: DetalhesViagemUiState = DetalhesViagemUiState()
 
+    /**
+     * Infla o layout, resolve o id da viagem recebido por extra (sem ele a tela não faz sentido,
+     * então fecha na hora) e começa a observar o [estado][DetalhesViagemViewModel.estado] da
+     * ViewModel para redesenhar a tela a cada mudança.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detalhes_viagem)
@@ -60,12 +65,18 @@ class DetalhesViagemActivity : AppCompatActivity() {
         viewModel.estado.observe(this) { estado -> exibirEstado(estado) }
     }
 
+    /**
+     * Recarrega os dados da viagem sempre que a tela volta a ficar visível — por exemplo, depois
+     * que o motorista adiciona a viagem ao roteiro e volta pra cá, o botão precisa refletir o
+     * novo estado.
+     */
     override fun onResume() {
         super.onResume()
         val uid = AutenticacaoRepositorio.usuarioAtual?.uid ?: return
         viewModel.carregar(viagemId, uid)
     }
 
+    /** Preenche todos os campos da tela e o botão de ação a partir do estado atual da ViewModel. */
     private fun exibirEstado(estado: DetalhesViagemUiState) {
         estadoAtual = estado
         if (estado.erroAoCarregar) {
@@ -124,6 +135,7 @@ class DetalhesViagemActivity : AppCompatActivity() {
         }
     }
 
+    /** Chama o método da ViewModel correspondente à ação atual do botão (ver [AcaoViagem]). */
     private fun executarAcao() {
         when (estadoAtual.acao) {
             AcaoViagem.ADICIONAR_AO_ROTEIRO -> viewModel.adicionarAoRoteiro(viagemId)

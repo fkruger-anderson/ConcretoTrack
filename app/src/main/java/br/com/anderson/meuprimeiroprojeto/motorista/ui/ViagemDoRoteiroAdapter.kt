@@ -16,17 +16,26 @@ class ViagemDoRoteiroAdapter(
     private val aoMarcarEntregue: (viagemId: String) -> Unit
 ) : RecyclerView.Adapter<ViagemDoRoteiroAdapter.ViewHolder>() {
 
+    /**
+     * Guarda as referências das views de um item já inflado (`findViewById` só uma vez por item
+     * reciclado, não a cada scroll) — é o papel de um ViewHolder no padrão do RecyclerView.
+     */
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val textDestinatario: TextView = view.findViewById(R.id.textDestinatario)
         val textStatus: TextView = view.findViewById(R.id.textStatus)
         val botaoEntregue: Button = view.findViewById(R.id.botaoEntregue)
     }
 
+    /** Infla o layout de um item da lista (`item_viagem_do_roteiro.xml`) e cria o ViewHolder dele. */
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_viagem_do_roteiro, parent, false)
         return ViewHolder(view)
     }
 
+    /**
+     * Preenche as views de um ViewHolder com os dados do item da posição e mostra o botão de
+     * entregue só enquanto a viagem ainda não foi concluída nem cancelada.
+     */
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = itens[position]
         val contexto = holder.itemView.context
@@ -45,5 +54,6 @@ class ViagemDoRoteiroAdapter(
         holder.botaoEntregue.setOnClickListener { aoMarcarEntregue(item.viagemId) }
     }
 
+    /** Total de itens da lista; o RecyclerView usa isso pra saber quantas posições existem. */
     override fun getItemCount(): Int = itens.size
 }

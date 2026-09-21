@@ -23,6 +23,11 @@ class ViagensFragment : Fragment(R.layout.fragment_viagens) {
     private lateinit var recyclerViagens: RecyclerView
     private lateinit var textListaVazia: TextView
 
+    /**
+     * Liga as views do layout inflado, mostra a saudação com o nome em cache
+     * ([SessaoMotorista]), configura o botão de sair (encerra a sessão do Firebase Auth e limpa o
+     * cache local) e começa a observar o estado da ViewModel.
+     */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -50,6 +55,10 @@ class ViagensFragment : Fragment(R.layout.fragment_viagens) {
         viewModel.carregar(uid)
     }
 
+    /**
+     * Mostra a lista de viagens em aberto (ou a mensagem de lista vazia/erro) e liga o adapter
+     * que abre [DetalhesViagemActivity] ao tocar num item.
+     */
     private fun exibirEstado(estado: ViagensAbertasUiState) {
         if (estado.erroAoCarregar) {
             textListaVazia.text = getString(R.string.viagens_erro_carregar)

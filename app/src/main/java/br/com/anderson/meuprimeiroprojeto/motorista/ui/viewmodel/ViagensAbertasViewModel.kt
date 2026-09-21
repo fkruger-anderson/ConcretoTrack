@@ -24,6 +24,12 @@ class ViagensAbertasViewModel : ViewModel() {
     private val _estado = MutableLiveData(ViagensAbertasUiState())
     val estado: LiveData<ViagensAbertasUiState> = _estado
 
+    /**
+     * Busca as viagens em aberto do motorista e, uma a uma, o pedido correspondente de cada
+     * viagem (não é uma junção no servidor — mais simples de entender, e o volume de dados aqui
+     * é pequeno). Se um pedido específico falhar ao buscar, a viagem entra na lista mesmo assim,
+     * só sem os dados do pedido.
+     */
     fun carregar(motoristaUid: String) {
         viewModelScope.launch {
             try {

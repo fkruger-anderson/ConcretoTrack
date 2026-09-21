@@ -21,6 +21,10 @@ class ViagemAbertaAdapter(
     private val aoClicar: (ViagemAbertaComPedido) -> Unit
 ) : RecyclerView.Adapter<ViagemAbertaAdapter.ViewHolder>() {
 
+    /**
+     * Guarda as referências das views de um item já inflado (`findViewById` só uma vez por item
+     * reciclado, não a cada scroll) — é o papel de um ViewHolder no padrão do RecyclerView.
+     */
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val textDestinatario: TextView = view.findViewById(R.id.textDestinatario)
         val textEndereco: TextView = view.findViewById(R.id.textEndereco)
@@ -28,11 +32,13 @@ class ViagemAbertaAdapter(
         val textStatus: TextView = view.findViewById(R.id.textStatus)
     }
 
+    /** Infla o layout de um item da lista (`item_viagem_aberta.xml`) e cria o ViewHolder dele. */
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_viagem_aberta, parent, false)
         return ViewHolder(view)
     }
 
+    /** Preenche as views de um ViewHolder (reciclado ou novo) com os dados do item da posição. */
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = itens[position]
         val contexto = holder.itemView.context
@@ -51,5 +57,6 @@ class ViagemAbertaAdapter(
         holder.itemView.setOnClickListener { aoClicar(item) }
     }
 
+    /** Total de itens da lista; o RecyclerView usa isso pra saber quantas posições existem. */
     override fun getItemCount(): Int = itens.size
 }
