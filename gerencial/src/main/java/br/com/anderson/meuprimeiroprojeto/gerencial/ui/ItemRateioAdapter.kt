@@ -17,17 +17,24 @@ class ItemRateioAdapter(
     private val itens: List<ItemRateio>
 ) : RecyclerView.Adapter<ItemRateioAdapter.ViewHolder>() {
 
+    /** Referências das Views de um item da lista, encontradas uma única vez (evita findViewById repetido). */
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val textPedido: TextView = view.findViewById(R.id.textPedido)
         val textPeso: TextView = view.findViewById(R.id.textPeso)
         val textRateio: TextView = view.findViewById(R.id.textRateio)
     }
 
+    /** Infla o layout de um item da tabela de rateio. */
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_rateio, parent, false)
         return ViewHolder(view)
     }
 
+    /**
+     * Preenche o item na posição [position]: pedido, peso teórico (m³ dedicados e distância) e o
+     * percentual/km de fato rateado pra ele; destaca o fundo em amarelo quando esse é o item que
+     * a tela pediu pra realçar (chegou de um clique numa viagem específica no histórico).
+     */
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = itens[position]
         val contexto = holder.itemView.context
@@ -55,5 +62,6 @@ class ItemRateioAdapter(
         )
     }
 
+    /** Quantidade de itens da lista, exigido pelo RecyclerView pra saber quanto rolar. */
     override fun getItemCount(): Int = itens.size
 }

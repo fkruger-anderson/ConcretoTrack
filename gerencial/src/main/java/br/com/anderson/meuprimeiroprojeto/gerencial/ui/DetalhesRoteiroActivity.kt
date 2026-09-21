@@ -47,6 +47,11 @@ class DetalhesRoteiroActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var recyclerRateio: RecyclerView
     private val formatoData = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.forLanguageTag("pt-BR"))
 
+    /**
+     * Lê o roteiro (e, opcionalmente, a viagem a destacar) recebidos por Intent, liga as Views e
+     * a RecyclerView da tabela de rateio, pede o mapa assíncrono ao SupportMapFragment e manda a
+     * ViewModel carregar os dados do roteiro.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detalhes_roteiro)
@@ -75,11 +80,21 @@ class DetalhesRoteiroActivity : AppCompatActivity(), OnMapReadyCallback {
         viewModel.carregar(roteiroId, viagemDestacadaId)
     }
 
+    /**
+     * Callback assíncrono do SupportMapFragment, chamado quando o Google Maps termina de carregar.
+     * Guarda a referência do mapa e reexibe o estado atual, caso a ViewModel já tenha entregue os
+     * dados antes do mapa ficar pronto (senão essa primeira exibição passaria batida).
+     */
     override fun onMapReady(googleMap: GoogleMap) {
         mapa = googleMap
         viewModel.estado.value?.let { exibirEstado(it) }
     }
 
+    /**
+     * Reflete o [DetalhesRoteiroUiState] atual nas Views: textos de motorista, caminhão, período
+     * e km total, a tabela de rateio (via [ItemRateioAdapter]) e, se o mapa já estiver pronto, o
+     * trajeto (polyline) com marcadores de início/fim e a câmera enquadrando todos os pontos.
+     */
     private fun exibirEstado(estado: DetalhesRoteiroUiState) {
         if (!estado.carregado) return
 
