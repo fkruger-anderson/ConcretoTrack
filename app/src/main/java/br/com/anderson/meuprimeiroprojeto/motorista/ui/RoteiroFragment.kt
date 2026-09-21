@@ -7,6 +7,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
 import android.view.View
@@ -38,6 +40,10 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
 
     companion object {
         private const val PADDING_LIMITES_PX = 120
+
+        // Mesmo intervalo do RastreamentoService — não faz sentido checar por pontos novos mais
+        // rápido do que eles são gravados.
+        private const val INTERVALO_ATUALIZACAO_MAPA_MS = 10_000L
     }
 
     private val viewModel: RoteiroViewModel by viewModels()
@@ -52,6 +58,21 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
     private lateinit var textBateria: TextView
     private var mapa: GoogleMap? = null
     private var estadoAtual: RoteiroUiState = RoteiroUiState()
+
+    /**
+     * Enquanto a aba Roteiro fica aberta com o roteiro em rota, o `RastreamentoService` continua
+     * gravando pontos novos no Room em segundo plano, mas nada mais avisa esta tela — sem isso, o
+     * mapa fica congelado no trajeto que existia quando a aba foi aberta. Este `Handler` só
+     * relê os pontos (local, via [RoteiroViewModel.atualizarPontos]) a cada
+     * [INTERVALO_ATUALIZACAO_MAPA_MS], pra manter o desenho do trajeto acompanhando a viagem.
+     */
+    private val handlerAtualizacaoMapa = Handler(Looper.getMainLooper())
+    private val atualizadorDeMapa = object : Runnable {
+        override fun run() {
+            viewModel.atualizarPontos()
+            handlerAtualizacaoMapa.postDelayed(this, INTERVALO_ATUALIZACAO_MAPA_MS)
+        }
+    }
 
     /**
      * Pede localização fina/aproximada (e notificações, no Android 13+) pra o rastreamento poder
@@ -105,6 +126,7 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         viewModel.estado.observe(viewLifecycleOwner) { estado -> exibirEstado(estado) }
 
         pedirPermissaoDeLocalizacao()
+        handlerAtualizacaoMapa.postDelayed(atualizadorDeMapa, INTERVALO_ATUALIZACAO_MAPA_MS)
     }
 
     /** Recarrega o roteiro e reavalia a isenção de bateria sempre que a aba volta a ficar visível. */
@@ -128,6 +150,7 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
     /** Solta a referência do mapa e o adapter da lista; a view do fragment está sendo destruída. */
     override fun onDestroyView() {
         super.onDestroyView()
+        handlerAtualizacaoMapa.removeCallbacks(atualizadorDeMapa)
         mapa = null
         recyclerViagensRoteiro.adapter = null
     }

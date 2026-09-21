@@ -109,6 +109,22 @@ class RoteiroViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
+     * Recarrega só os pontos de GPS do roteiro atual — leitura local no Room, sem Firestore.
+     * Usado para atualizar o trajeto desenhado no mapa periodicamente enquanto o roteiro está em
+     * rota, sem repetir a cada poucos segundos as consultas ao Firestore que [carregar] faz
+     * (roteiro, viagens, pedidos).
+     */
+    fun atualizarPontos() {
+        val estado = _estado.value ?: return
+        val roteiroId = estado.roteiroId ?: return
+        if (estado.status != StatusRoteiro.EM_ROTA.name) return
+        viewModelScope.launch {
+            val pontos = PontoGpsRepositorio.buscarPontos(getApplication(), roteiroId)
+            _estado.value = _estado.value?.copy(pontos = pontos)
+        }
+    }
+
+    /**
      * Não espera confirmação do servidor — mesma escrita simples usada em todo o app motorista.
      * Só as viagens ainda ATRIBUIDA entram no lote: uma viagem que o gerente cancelou depois de
      * adicionada ao roteiro (ainda PLANEJANDO) já teve seu m³ devolvido ao saldo do pedido — não
