@@ -7,7 +7,11 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
 
-/** Cadastro/login do gerente com Firebase Auth; o perfil (nome) fica no Firestore. */
+/**
+ * Login do gerente com Firebase Auth; o perfil (nome) fica no Firestore. Não existe
+ * autocadastro — um gerente só é criado por outro gerente já logado (ver
+ * [cadastrarNovoGerente]).
+ */
 object AutenticacaoRepositorio {
 
     // Nome de uma segunda instância do Firebase, só para cadastrar outro gerente estando logado.
@@ -19,16 +23,6 @@ object AutenticacaoRepositorio {
     /** Usuário do Firebase Auth logado no momento, ou null se ninguém estiver logado. */
     val usuarioAtual: FirebaseUser?
         get() = auth.currentUser
-
-    /** Autocadastro na tela de login (ninguém está logado ainda, então pode usar a instância principal). */
-    suspend fun cadastrar(nome: String, email: String, senha: String): FirebaseUser {
-        val resultado = auth.createUserWithEmailAndPassword(email, senha).aguardar()
-        val usuario = resultado.user ?: error("Não foi possível criar a conta")
-        db.collection("gerentes").document(usuario.uid)
-            .set(GerentePerfil(nome = nome))
-            .aguardar()
-        return usuario
-    }
 
     /**
      * Cadastra outro gerente a partir da aba Configurações, com o gerente atual já logado.

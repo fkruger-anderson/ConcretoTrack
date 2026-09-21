@@ -25,17 +25,9 @@ object SessaoMotorista {
             .apply()
     }
 
-    /** True se já existe um perfil salvo em cache (evita nova busca no Firestore). */
-    fun temPerfilEmCache(context: Context): Boolean =
-        prefs(context).getString(CHAVE_NOME, null) != null
-
     /** Nome do motorista em cache, ou string vazia se ainda não foi salvo. */
     fun nomeMotorista(context: Context): String =
         prefs(context).getString(CHAVE_NOME, "") ?: ""
-
-    /** CPF do motorista em cache, ou string vazia se ainda não foi salvo. */
-    fun cpfMotorista(context: Context): String =
-        prefs(context).getString(CHAVE_CPF, "") ?: ""
 
     /** Limpa o cache local ao sair (a sessão do Firebase Auth é encerrada à parte). */
     fun sair(context: Context) {
