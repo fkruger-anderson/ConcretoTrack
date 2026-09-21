@@ -12,7 +12,12 @@ import br.com.anderson.meuprimeiroprojeto.gerencial.backend.ViagemRepositorio
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusViagem
 import kotlinx.coroutines.launch
 
-/** Uma linha da tabela de rateio: um pedido do roteiro, com peso/percentual/km já calculados. */
+/**
+ * Uma linha da tabela de rateio: um pedido do roteiro, com peso/percentual/km já calculados.
+ * [kmAtribuido] nulo é ambíguo por si só — pode ser uma viagem ainda não resolvida (o roteiro não
+ * fechou ainda) ou uma viagem cancelada (nunca vai receber km, propositalmente fora do rateio).
+ * [cancelada] existe só pra desfazer essa ambiguidade na hora de mostrar o texto certo.
+ */
 data class ItemRateio(
     val viagemId: String,
     val pedidoId: Int,
@@ -22,6 +27,7 @@ data class ItemRateio(
     val pesoTeorico: Double,
     val percentualRateio: Double,
     val kmAtribuido: Double?,
+    val cancelada: Boolean,
     val destacado: Boolean
 )
 
@@ -125,6 +131,7 @@ class DetalhesRoteiroViewModel : ViewModel() {
                     pesoTeorico = pesoTeorico,
                     percentualRateio = percentual,
                     kmAtribuido = viagem.kmPercorridos,
+                    cancelada = viagem.status == StatusViagem.CANCELADA.name,
                     destacado = id == viagemDestacadaId
                 )
             }

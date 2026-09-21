@@ -48,13 +48,15 @@ class ItemRateioAdapter(
             formatarKm(item.distanciaDedicadaKm),
             formatarM3(item.pesoTeorico)
         )
-        holder.textRateio.text = if (item.kmAtribuido != null) {
-            val percentual = String.format(Locale.getDefault(), "%.1f", item.percentualRateio)
-            contexto.getString(
-                R.string.detalhes_roteiro_item_rateio_formato, percentual, formatarKm(item.kmAtribuido)
-            )
-        } else {
-            contexto.getString(R.string.detalhes_roteiro_item_sem_km)
+        holder.textRateio.text = when {
+            item.kmAtribuido != null -> {
+                val percentual = String.format(Locale.getDefault(), "%.1f", item.percentualRateio)
+                contexto.getString(
+                    R.string.detalhes_roteiro_item_rateio_formato, percentual, formatarKm(item.kmAtribuido)
+                )
+            }
+            item.cancelada -> contexto.getString(R.string.viagem_status_cancelada)
+            else -> contexto.getString(R.string.detalhes_roteiro_item_sem_km)
         }
 
         holder.itemView.setBackgroundColor(
