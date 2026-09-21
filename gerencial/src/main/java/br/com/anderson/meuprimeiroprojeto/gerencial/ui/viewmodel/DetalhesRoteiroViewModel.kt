@@ -52,6 +52,15 @@ class DetalhesRoteiroViewModel : ViewModel() {
     private val _estado = MutableLiveData(DetalhesRoteiroUiState())
     val estado: LiveData<DetalhesRoteiroUiState> = _estado
 
+    /**
+     * Carrega o roteiro, os pontos de GPS registrados nele e monta a tabela de rateio: cada
+     * viagem do roteiro ganha um "peso teórico" (m³ da viagem × distância dedicada do pedido) e
+     * um percentual sobre o peso total das viagens não canceladas — é assim que o km total
+     * percorrido pelo caminhão nessa rota é dividido entre os pedidos atendidos. Se o roteiro não
+     * for encontrado, a função só loga e sai sem atualizar o estado (a tela fica com
+     * `carregado = false`). Falhas ao buscar pontos, viagens ou um pedido individual são logadas
+     * e tratadas com listas vazias/zero, pra um dado faltando não travar a tela inteira.
+     */
     fun carregar(roteiroId: String, viagemDestacadaId: String?) {
         viewModelScope.launch {
             val roteiro = try {
