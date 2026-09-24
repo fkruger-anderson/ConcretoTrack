@@ -1,11 +1,11 @@
 package br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel
 
-import android.util.Patterns
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.AutenticacaoRepositorio
+import br.com.anderson.meuprimeiroprojeto.gerencial.dados.EmailUtils
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
@@ -53,7 +53,7 @@ class CadastroGerenteViewModel : ViewModel() {
      * cadastrando.
      *
      * - Nome: não pode ser vazio.
-     * - Email: precisa ter formato de email (`Patterns.EMAIL_ADDRESS` é um modelo pronto do Android).
+     * - Email: precisa ter formato de email (conferido por [EmailUtils], com a mesma regra do Android).
      * - Senha: pelo menos 6 caracteres (é o mínimo que o Firebase aceita).
      *
      * Cada `catch` transforma um erro do Firebase num tipo de [CadastroGerenteErro].
@@ -63,7 +63,7 @@ class CadastroGerenteViewModel : ViewModel() {
         val email = emailDigitado.trim()
 
         val nomeInvalido = nome.isEmpty()
-        val emailInvalido = email.isEmpty() || !Patterns.EMAIL_ADDRESS.matcher(email).matches()
+        val emailInvalido = email.isEmpty() || !EmailUtils.valido(email)
         val senhaInvalida = senha.length < 6
 
         if (nomeInvalido || emailInvalido || senhaInvalida) {

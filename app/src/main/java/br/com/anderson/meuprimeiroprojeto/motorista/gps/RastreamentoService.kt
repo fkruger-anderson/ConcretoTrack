@@ -187,7 +187,7 @@ class RastreamentoService : Service() {
                 val localizacao = resultado.lastLocation ?: return
                 val horario = System.currentTimeMillis()
                 escopo.launch {
-                    AppDatabase.obter(applicationContext).pontoGpsDao().inserir(
+                    AppDatabase.obter().pontoGpsDao().inserir(
                         PontoGps(
                             roteiroId = alvoRoteiroId,
                             latitude = localizacao.latitude,
@@ -217,7 +217,7 @@ class RastreamentoService : Service() {
      * enviado duas vezes, ele só é sobrescrito, sem ficar repetido no Firestore.
      */
     private suspend fun sincronizarPontosPendentes() {
-        val dao = AppDatabase.obter(applicationContext).pontoGpsDao()
+        val dao = AppDatabase.obter().pontoGpsDao()
         for (ponto in dao.buscarPendentes()) {
             try {
                 Firebase.firestore.collection("roteiros").document(ponto.roteiroId)
@@ -243,7 +243,7 @@ class RastreamentoService : Service() {
      * entrega sai da fila. Mesma lógica da fila de pontos: cada uma é tentada separadamente.
      */
     private suspend fun sincronizarEntregasPendentes() {
-        val dao = AppDatabase.obter(applicationContext).entregaPendenteDao()
+        val dao = AppDatabase.obter().entregaPendenteDao()
         for (entrega in dao.buscarPendentes()) {
             try {
                 RoteiroRepositorio.confirmarEntregaNoServidor(entrega.viagemId, entrega.dataFim)

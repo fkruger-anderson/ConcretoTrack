@@ -1,11 +1,11 @@
 package br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import br.com.anderson.meuprimeiroprojeto.R
+import br.com.anderson.meuprimeiroprojeto.motorista.backend.AutenticacaoRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.PedidoRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.RoteiroRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.ViagemRemota
@@ -18,6 +18,21 @@ import kotlinx.coroutines.withTimeout
 
 /** As ações que o botão da tela de detalhes pode oferecer (ou nenhuma). */
 enum class AcaoViagem { ADICIONAR_AO_ROTEIRO, REMOVER_DO_ROTEIRO, MARCAR_ENTREGUE, NENHUMA }
+
+/**
+ * Os avisos que a tela de detalhes pode mostrar depois de uma ação. A tela escolhe o texto de cada
+ * um no `strings.xml` — o ViewModel não sabe nada de textos (assim como no app gerencial).
+ */
+enum class AvisoViagem {
+    /** A viagem é de um caminhão diferente das que já estão no roteiro. */
+    CAMINHAO_DIFERENTE,
+    /** O roteiro já saiu da usina, então não aceita mais mudanças. */
+    ROTEIRO_JA_INICIADO,
+    /** Sem internet (ou o servidor não respondeu a tempo). */
+    SEM_CONEXAO,
+    /** A entrega foi marcada sem sinal e será enviada sozinha quando a conexão voltar. */
+    ENTREGA_ENFILEIRADA
+}
 
 /**
  * O estado da tela de detalhes da viagem
@@ -46,8 +61,8 @@ data class DetalhesViagemUiState(
     val acao: AcaoViagem = AcaoViagem.NENHUMA,
     /** `true` enquanto uma ação está em andamento (o botão fica desligado). */
     val carregando: Boolean = false,
-    /** Mensagem para mostrar num Toast, uma vez só. */
-    val erroAcao: Evento<String>? = null,
+    /** Aviso para mostrar num Toast, uma vez só. */
+    val aviso: Evento<AvisoViagem>? = null,
     /** Aviso de "ação concluída" (a tela fecha), uma vez só. */
     val acaoConcluida: Evento<Unit>? = null
 )
@@ -56,12 +71,16 @@ data class DetalhesViagemUiState(
  * O "cérebro" da tela de detalhes da viagem: carrega os dados da viagem e do pedido, decide qual
  * ação o botão oferece (ver [AcaoViagem]) e executa essa ação.
  *
- * É um `AndroidViewModel` porque precisa do `Context` da aplicação para duas coisas: abrir o
- * banco local ao marcar entrega sem sinal e pegar textos do `strings.xml` para as mensagens de erro.
+ * É um `ViewModel` comum, sem `Context` (regra da disciplina): os avisos são um `enum` que a tela
+ * transforma em texto, e o banco local usado ao marcar entrega sem sinal já foi preparado quando o
+ * app começou a rodar.
  */
-class DetalhesViagemViewModel(application: Application) : AndroidViewModel(application) {
+class DetalhesViagemViewModel : ViewModel() {
 
     companion object {
+        // Etiqueta das mensagens desta classe no Logcat do Android Studio.
+        private const val TAG = "DetalhesViagemViewModel"
+
         // Adicionar/remover do roteiro precisa de conexão na hora (lê e valida o roteiro no
         // servidor) — sem isso o motorista ficaria esperando pra sempre.
         // Por isso existe um tempo máximo de espera: 10 segundos.
@@ -78,16 +97,19 @@ class DetalhesViagemViewModel(application: Application) : AndroidViewModel(appli
 
     /**
      * Busca a viagem e o pedido dela, decide a ação do botão ([decidirAcao]) e publica tudo de uma
-     * vez no [estado]. Se a viagem não for encontrada, publica o erro.
+     * vez no [estado]. Se ninguém estiver logado, não faz nada; se a viagem não for encontrada,
+     * publica o erro.
      *
-     * O `try { ... } catch { null }` é um jeito curto de dizer "se der erro, use null".
+     * O `try { ... } catch { null }` é um jeito curto de dizer "se der erro, use null" (o erro fica
+     * registrado no Logcat).
      */
-    fun carregar(viagemId: String, motoristaUid: String) {
-        this.motoristaUid = motoristaUid
+    fun carregar(viagemId: String) {
+        motoristaUid = AutenticacaoRepositorio.usuarioAtual?.uid ?: return
         viewModelScope.launch {
             val viagem = try {
                 ViagemRepositorio.buscarPorId(viagemId)
             } catch (erro: Exception) {
+                Log.w(TAG, "Falha ao buscar a viagem $viagemId", erro)
                 null
             }
             if (viagem == null) {
@@ -98,6 +120,7 @@ class DetalhesViagemViewModel(application: Application) : AndroidViewModel(appli
             val pedido = try {
                 PedidoRepositorio.buscarPorId(viagem.pedidoId)
             } catch (erro: Exception) {
+                Log.w(TAG, "Falha ao buscar o pedido ${viagem.pedidoId}", erro)
                 null
             }
 
@@ -137,6 +160,7 @@ class DetalhesViagemViewModel(application: Application) : AndroidViewModel(appli
             val roteiroAtivo = try {
                 RoteiroRepositorio.buscarRoteiroAtivo(motoristaUid)
             } catch (erro: Exception) {
+                Log.w(TAG, "Falha ao buscar o roteiro ativo do motorista", erro)
                 null
             }
             return if (roteiroAtivo?.second?.status == StatusRoteiro.EM_ROTA.name) {
@@ -148,6 +172,7 @@ class DetalhesViagemViewModel(application: Application) : AndroidViewModel(appli
         val roteiro = try {
             RoteiroRepositorio.buscarPorId(roteiroId)
         } catch (erro: Exception) {
+            Log.w(TAG, "Falha ao buscar o roteiro $roteiroId", erro)
             null
         }
         return when (roteiro?.status) {
@@ -160,10 +185,10 @@ class DetalhesViagemViewModel(application: Application) : AndroidViewModel(appli
     /**
      * Coloca a viagem no roteiro do motorista. Precisa de internet na hora (o servidor confere o
      * roteiro antes), então usa `withTimeout`: se não houver resposta em 10 segundos, desiste e
-     * mostra um erro, em vez de deixar o motorista esperando para sempre.
+     * mostra um aviso, em vez de deixar o motorista esperando para sempre.
      *
-     * Cada `catch` trata um tipo de erro: caminhão diferente e roteiro já iniciado mostram a
-     * mensagem da própria exceção; tempo esgotado e outros erros mostram "sem conexão".
+     * Cada `catch` transforma um tipo de erro num [AvisoViagem]: caminhão diferente, roteiro já
+     * iniciado, ou sem conexão (tempo esgotado ou qualquer outra falha, que vai para o Logcat).
      */
     fun adicionarAoRoteiro(viagemId: String) {
         _estado.value = _estado.value?.copy(carregando = true)
@@ -174,20 +199,21 @@ class DetalhesViagemViewModel(application: Application) : AndroidViewModel(appli
                 }
                 _estado.value = _estado.value?.copy(carregando = false, acaoConcluida = Evento(Unit))
             } catch (erro: RoteiroRepositorio.CaminhaoIncompativelException) {
-                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento(erro.message ?: ""))
+                _estado.value = _estado.value?.copy(carregando = false, aviso = Evento(AvisoViagem.CAMINHAO_DIFERENTE))
             } catch (erro: RoteiroRepositorio.RoteiroJaIniciadoException) {
-                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento(erro.message ?: ""))
+                _estado.value = _estado.value?.copy(carregando = false, aviso = Evento(AvisoViagem.ROTEIRO_JA_INICIADO))
             } catch (erro: TimeoutCancellationException) {
-                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento(getApplication<Application>().getString(R.string.erro_sem_conexao_tentar_novo)))
+                _estado.value = _estado.value?.copy(carregando = false, aviso = Evento(AvisoViagem.SEM_CONEXAO))
             } catch (erro: Exception) {
-                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento(getApplication<Application>().getString(R.string.erro_sem_conexao_tentar_novo)))
+                Log.w(TAG, "Falha ao adicionar a viagem $viagemId ao roteiro", erro)
+                _estado.value = _estado.value?.copy(carregando = false, aviso = Evento(AvisoViagem.SEM_CONEXAO))
             }
         }
     }
 
     /**
      * Tira a viagem do roteiro (que ainda está sendo planejado). Mesma ideia de tempo máximo de
-     * [adicionarAoRoteiro]: sem resposta em 10 segundos, desiste e mostra o erro.
+     * [adicionarAoRoteiro]: sem resposta em 10 segundos, desiste e mostra o aviso.
      */
     fun removerDoRoteiro(viagemId: String, roteiroId: String) {
         _estado.value = _estado.value?.copy(carregando = true)
@@ -198,11 +224,12 @@ class DetalhesViagemViewModel(application: Application) : AndroidViewModel(appli
                 }
                 _estado.value = _estado.value?.copy(carregando = false, acaoConcluida = Evento(Unit))
             } catch (erro: RoteiroRepositorio.RoteiroJaIniciadoException) {
-                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento(erro.message ?: ""))
+                _estado.value = _estado.value?.copy(carregando = false, aviso = Evento(AvisoViagem.ROTEIRO_JA_INICIADO))
             } catch (erro: TimeoutCancellationException) {
-                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento(getApplication<Application>().getString(R.string.erro_sem_conexao_tentar_novo)))
+                _estado.value = _estado.value?.copy(carregando = false, aviso = Evento(AvisoViagem.SEM_CONEXAO))
             } catch (erro: Exception) {
-                _estado.value = _estado.value?.copy(carregando = false, erroAcao = Evento(getApplication<Application>().getString(R.string.erro_sem_conexao_tentar_novo)))
+                Log.w(TAG, "Falha ao remover a viagem $viagemId do roteiro", erro)
+                _estado.value = _estado.value?.copy(carregando = false, aviso = Evento(AvisoViagem.SEM_CONEXAO))
             }
         }
     }
@@ -214,13 +241,13 @@ class DetalhesViagemViewModel(application: Application) : AndroidViewModel(appli
      */
     fun marcarEntregue(viagemId: String) {
         viewModelScope.launch {
-            val confirmado = RoteiroRepositorio.marcarEntregue(getApplication(), viagemId)
+            val confirmado = RoteiroRepositorio.marcarEntregue(viagemId)
             _estado.value = if (confirmado) {
                 _estado.value?.copy(acaoConcluida = Evento(Unit))
             } else {
                 _estado.value?.copy(
                     acaoConcluida = Evento(Unit),
-                    erroAcao = Evento(getApplication<Application>().getString(R.string.info_entrega_enfileirada))
+                    aviso = Evento(AvisoViagem.ENTREGA_ENFILEIRADA)
                 )
             }
         }

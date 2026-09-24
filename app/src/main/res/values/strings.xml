@@ -35,6 +35,8 @@
     <string name="detalhes_viagem_botao_adicionar">Adicionar ao roteiro</string>
     <string name="detalhes_viagem_botao_remover">Remover do roteiro</string>
     <string name="detalhes_viagem_botao_entregue">Marcar como entregue</string>
+    <string name="detalhes_viagem_aviso_caminhao_diferente">Esta viagem usa um caminhão diferente do roteiro atual</string>
+    <string name="detalhes_viagem_aviso_roteiro_iniciado">Não é possível alterar as viagens de um roteiro já iniciado</string>
 
     <string name="cancelar_viagem_confirmar">Confirmar</string>
     <string name="cancelar_viagem_voltar">Voltar</string>

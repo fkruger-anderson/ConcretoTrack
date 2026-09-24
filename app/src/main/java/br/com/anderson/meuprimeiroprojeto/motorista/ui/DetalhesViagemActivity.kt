@@ -8,10 +8,10 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import br.com.anderson.meuprimeiroprojeto.R
-import br.com.anderson.meuprimeiroprojeto.motorista.backend.AutenticacaoRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.formatarKm
 import br.com.anderson.meuprimeiroprojeto.motorista.formatarM3
 import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.AcaoViagem
+import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.AvisoViagem
 import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.DetalhesViagemUiState
 import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.DetalhesViagemViewModel
 import java.text.SimpleDateFormat
@@ -86,16 +86,16 @@ class DetalhesViagemActivity : AppCompatActivity() {
      */
     override fun onResume() {
         super.onResume()
-        val uid = AutenticacaoRepositorio.usuarioAtual?.uid ?: return
-        viewModel.carregar(viagemId, uid)
+        viewModel.carregar(viagemId)
     }
 
     /**
      * Desenha o estado atual na tela: textos da viagem, período (se já iniciou), km (se o roteiro
      * já foi encerrado) e o botão certo para a situação.
      *
-     * No fim, trata os "eventos" de uma vez só: uma mensagem de erro vira um Toast (o aviso que
-     * aparece rapidinho na parte de baixo da tela) e uma ação concluída fecha a tela.
+     * No fim, trata os "eventos" de uma vez só: um aviso ([AvisoViagem]) vira um Toast (a mensagem
+     * que aparece rapidinho na parte de baixo da tela), com o texto certo do `strings.xml`, e uma
+     * ação concluída fecha a tela.
      */
     private fun exibirEstado(estado: DetalhesViagemUiState) {
         estadoAtual = estado
@@ -147,8 +147,14 @@ class DetalhesViagemActivity : AppCompatActivity() {
         }
         botaoAcao.isEnabled = !estado.carregando
 
-        estado.erroAcao?.getConteudoSeNaoTratado()?.let { mensagem ->
-            Toast.makeText(this, mensagem, Toast.LENGTH_LONG).show()
+        estado.aviso?.getConteudoSeNaoTratado()?.let { aviso ->
+            val texto = when (aviso) {
+                AvisoViagem.CAMINHAO_DIFERENTE -> R.string.detalhes_viagem_aviso_caminhao_diferente
+                AvisoViagem.ROTEIRO_JA_INICIADO -> R.string.detalhes_viagem_aviso_roteiro_iniciado
+                AvisoViagem.SEM_CONEXAO -> R.string.erro_sem_conexao_tentar_novo
+                AvisoViagem.ENTREGA_ENFILEIRADA -> R.string.info_entrega_enfileirada
+            }
+            Toast.makeText(this, texto, Toast.LENGTH_LONG).show()
         }
         estado.acaoConcluida?.getConteudoSeNaoTratado()?.let {
             finish()

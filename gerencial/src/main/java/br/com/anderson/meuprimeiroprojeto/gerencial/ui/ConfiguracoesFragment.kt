@@ -8,7 +8,6 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import br.com.anderson.meuprimeiroprojeto.gerencial.R
-import br.com.anderson.meuprimeiroprojeto.gerencial.backend.AutenticacaoRepositorio
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.ConfiguracoesViewModel
 
 /**
@@ -26,8 +25,8 @@ class ConfiguracoesFragment : Fragment(R.layout.fragment_configuracoes) {
      * Chamado pelo Android logo depois que a tela do fragment foi montada.
      *
      * Observa o ViewModel para mostrar "Olá, <nome>", pede para ele buscar o nome, e liga os botões:
-     * cada botão de cadastro abre a tela correspondente com um `Intent`; o Sair faz o logout, abre o
-     * login e fecha a tela atual (`requireActivity().finish()`).
+     * cada botão de cadastro abre a tela correspondente com um `Intent`; o Sair pede ao ViewModel
+     * para fazer o logout e então abre o login e fecha a tela atual (`requireActivity().finish()`).
      */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -51,7 +50,7 @@ class ConfiguracoesFragment : Fragment(R.layout.fragment_configuracoes) {
         }
 
         view.findViewById<Button>(R.id.botaoSair).setOnClickListener {
-            AutenticacaoRepositorio.sair()
+            viewModel.sair()
             startActivity(Intent(requireContext(), LoginActivity::class.java))
             requireActivity().finish()
         }

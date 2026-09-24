@@ -1,6 +1,5 @@
 package br.com.anderson.meuprimeiroprojeto.motorista.db
 
-import android.content.Context
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -10,7 +9,8 @@ import kotlin.math.sqrt
  * Lê os pontos de GPS guardados no celular (Room) e calcula quantos km o caminhão rodou.
  *
  * Usa só os pontos locais, então funciona mesmo que eles ainda não tenham subido para o
- * Firestore. As funções recebem um `Context` porque precisam abrir o banco local.
+ * Firestore. O banco local já foi preparado quando o app começou a rodar (ver [AppDatabase]),
+ * então as funções não precisam receber um `Context`.
  */
 object PontoGpsRepositorio {
 
@@ -26,8 +26,8 @@ object PontoGpsRepositorio {
      * A conta é refeita do zero toda vez que é pedida. Isso não pesa: com um ponto a cada 10
      * segundos, mesmo um roteiro de horas tem só algumas centenas de pontos.
      */
-    suspend fun calcularKmPercorridos(context: Context, roteiroId: String): Double {
-        val pontos = AppDatabase.obter(context).pontoGpsDao().buscarPorRoteiro(roteiroId)
+    suspend fun calcularKmPercorridos(roteiroId: String): Double {
+        val pontos = AppDatabase.obter().pontoGpsDao().buscarPorRoteiro(roteiroId)
         if (pontos.size < 2) return 0.0
 
         var totalMetros = 0.0
@@ -41,8 +41,8 @@ object PontoGpsRepositorio {
     }
 
     /** Devolve os pontos de GPS do roteiro, em ordem de horário, para desenhar o trajeto no mapa. */
-    suspend fun buscarPontos(context: Context, roteiroId: String): List<PontoGps> {
-        return AppDatabase.obter(context).pontoGpsDao().buscarPorRoteiro(roteiroId)
+    suspend fun buscarPontos(roteiroId: String): List<PontoGps> {
+        return AppDatabase.obter().pontoGpsDao().buscarPorRoteiro(roteiroId)
     }
 
     /**

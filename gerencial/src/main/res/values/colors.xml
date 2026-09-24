@@ -2,4 +2,6 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- Fundo amarelo claro da linha em destaque na tabela de rateio (detalhe do roteiro). -->
+    <color name="rateio_destaque">#FFFFF3CD</color>
 </resources>

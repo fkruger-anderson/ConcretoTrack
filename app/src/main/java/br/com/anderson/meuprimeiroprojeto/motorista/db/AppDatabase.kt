@@ -34,36 +34,38 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun entregaPendenteDao(): EntregaPendenteDao
 
     // "companion object" guarda coisas que pertencem à classe em si, e não a cada objeto dela.
-    // É parecido com o "static" do Java: chama-se direto pelo nome, `AppDatabase.obter(contexto)`.
+    // É parecido com o "static" do Java: chama-se direto pelo nome, `AppDatabase.obter()`.
     companion object {
-        // @Volatile garante que, se duas partes do app (duas "threads") olharem esta variável ao
-        // mesmo tempo, as duas enxerguem o valor mais recente.
-        @Volatile
-        private var instancia: AppDatabase? = null
+        // A única instância do banco no app inteiro (padrão "singleton"). `lateinit` quer dizer
+        // "será preenchida depois", em inicializar(), antes de qualquer uso.
+        private lateinit var instancia: AppDatabase
 
         /**
-         * Devolve o banco de dados, criando-o só na primeira vez que for pedido. Nas outras vezes
-         * devolve o mesmo, já aberto (isso se chama padrão "singleton": uma instância só).
+         * Prepara o banco. Chamada uma única vez, pela `MotoristaApplication`, quando o app começa a
+         * rodar — antes de qualquer tela ou serviço, então quando alguém chamar [obter] o banco já
+         * existe.
          *
-         * Abrir o banco é caro, e ter dois abertos ao mesmo tempo pode dar problema; por isso só
-         * existe um. O `synchronized` funciona como uma porta que só deixa uma thread entrar de
-         * cada vez, para duas não criarem o banco ao mesmo tempo.
-         *
-         * Recebe um `Context` (o "contexto" do Android: dá acesso aos arquivos e recursos do app)
-         * porque o Room precisa saber onde criar o arquivo do banco.
+         * Recebe um `Context` (o "contexto" do Android: dá acesso aos arquivos do app) porque o Room
+         * precisa saber onde criar o arquivo do banco. `build()` só prepara o banco; o arquivo é
+         * aberto de verdade no primeiro uso, fora da thread da tela.
          */
-        fun obter(context: Context): AppDatabase =
-            instancia ?: synchronized(this) {
-                instancia ?: Room.databaseBuilder(
-                    context.applicationContext,
-                    AppDatabase::class.java,
-                    "entregas.db"
-                )
-                    // Ainda não há usuários em produção; recriar o banco a cada mudança de
-                    // schema é mais simples do que escrever migrations nesta fase do projeto.
-                    // (Na prática: quando a versão muda, o banco antigo é apagado e criado de novo.)
-                    .fallbackToDestructiveMigration(true)
-                    .build().also { instancia = it }
-            }
+        fun inicializar(context: Context) {
+            instancia = Room.databaseBuilder(
+                context.applicationContext,
+                AppDatabase::class.java,
+                "entregas.db"
+            )
+                // Ainda não há usuários em produção; recriar o banco a cada mudança de
+                // schema é mais simples do que escrever migrations nesta fase do projeto.
+                // (Na prática: quando a versão muda, o banco antigo é apagado e criado de novo.)
+                .fallbackToDestructiveMigration(true)
+                .build()
+        }
+
+        /**
+         * Devolve o banco de dados, sempre o mesmo. Ter um só é importante: abrir o banco é caro, e
+         * dois abertos ao mesmo tempo podem se atrapalhar.
+         */
+        fun obter(): AppDatabase = instancia
     }
 }

@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import br.com.anderson.meuprimeiroprojeto.gerencial.R
 import br.com.anderson.meuprimeiroprojeto.gerencial.formatarKm
@@ -49,7 +50,9 @@ class ItemRateioAdapter(
      * - rateio: o percentual e os km, se já foram calculados; "cancelada", se a viagem foi
      *   cancelada; ou um aviso de "ainda sem km", se o roteiro não foi encerrado.
      *
-     * A linha que o gerente tocou no histórico ganha fundo amarelo claro para se destacar.
+     * A linha que o gerente tocou no histórico ganha fundo amarelo claro para se destacar. A cor
+     * fica no `res/values/colors.xml` (regra dos slides: cores e textos ficam nos recursos, não no
+     * código); `ContextCompat.getColor` busca essa cor pelo nome.
      */
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = itens[position]
@@ -76,7 +79,7 @@ class ItemRateioAdapter(
         }
 
         holder.itemView.setBackgroundColor(
-            if (item.destacado) Color.parseColor("#FFF3CD") else Color.TRANSPARENT
+            if (item.destacado) ContextCompat.getColor(contexto, R.color.rateio_destaque) else Color.TRANSPARENT
         )
     }
 

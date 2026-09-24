@@ -1,6 +1,5 @@
 package br.com.anderson.meuprimeiroprojeto.motorista.backend
 
-import android.content.Context
 import android.util.Log
 import br.com.anderson.meuprimeiroprojeto.motorista.db.AppDatabase
 import br.com.anderson.meuprimeiroprojeto.motorista.db.EntregaPendente
@@ -178,18 +177,20 @@ object RoteiroRepositorio {
      * `RastreamentoService` tenta reenviar essa fila a cada nova posição de GPS, até dar certo —
      * sem o motorista precisar fazer nada.
      *
-     * Recebe um `Context` porque precisa abrir o banco local (Room).
+     * A fila fica no banco local, que já foi preparado quando o app começou a rodar (ver
+     * `AppDatabase`); por isso esta função não precisa receber um `Context`.
      */
-    suspend fun marcarEntregue(context: Context, viagemId: String): Boolean {
+    suspend fun marcarEntregue(viagemId: String): Boolean {
         val agora = System.currentTimeMillis()
         return try {
             withTimeout(TEMPO_LIMITE_MS) {
                 confirmarEntregaNoServidor(viagemId, agora)
             }
-            AppDatabase.obter(context).entregaPendenteDao().remover(viagemId)
+            AppDatabase.obter().entregaPendenteDao().remover(viagemId)
             true
         } catch (erro: Exception) {
-            AppDatabase.obter(context).entregaPendenteDao().inserir(EntregaPendente(viagemId, agora))
+            Log.w(TAG, "Entrega da viagem $viagemId não confirmada agora; guardada na fila local", erro)
+            AppDatabase.obter().entregaPendenteDao().inserir(EntregaPendente(viagemId, agora))
             false
         }
     }

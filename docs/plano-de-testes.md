@@ -3,8 +3,9 @@
 Este documento diz **o que testar, como e em que ordem** nos dois apps (`:app` do motorista e
 `:gerencial`).
 
-**Situação:** a fase 1 está feita (41 testes unitários, em `app/src/test` e `gerencial/src/test`)
-e revelou um bug de arredondamento no saldo, já corrigido. As fases 2 a 6 ainda não foram feitas.
+**Situação:** as fases 1 e 2 estão feitas (85 testes unitários, em `app/src/test` e
+`gerencial/src/test`). A fase 1 revelou um bug de arredondamento no saldo, já corrigido. As fases 3
+a 6 ainda não foram feitas.
 
 ## 1. Os três tipos de teste (explicação rápida)
 
@@ -46,25 +47,28 @@ jeito que está:
      falsa que devolve dados prontos.
 2. **`android.util.Log` e `android.util.Patterns` dentro de ViewModels.** No teste unitário, as
    classes do Android são "cascas vazias": `Log.w` lança erro e `Patterns.EMAIL_ADDRESS` vem nulo.
-   - `Log`: basta ligar `testOptions { unitTests.isReturnDefaultValues = true }` no
-     `build.gradle.kts` (é configuração, não dependência nova).
-   - `Patterns` (usado em `CadastroMotoristaViewModel` e `CadastroGerenteViewModel`): trocar por
-     uma `Regex` própria ou rodar esses testes com Robolectric.
+   - `Patterns`: **resolvido** na fase 2. Os cadastros de motorista e de gerente passaram a usar
+     `EmailUtils` (gerencial, pacote `dados`), com a mesma regra do Android, que funciona também no
+     computador.
+   - `Log`: os testes da fase 2 não passam por nenhum `Log.w`. Se um teste futuro passar, basta
+     ligar `testOptions { unitTests.isReturnDefaultValues = true }` no `build.gradle.kts`.
 3. **`LiveData` e `viewModelScope` precisam de ajuda no teste**: sem ela, o `LiveData` reclama que
-   não está na thread principal e as coroutines não rodam.
+   não está na thread principal e as coroutines não rodam. O `LiveData` foi **resolvido** na fase 2
+   com a `InstantTaskExecutorRule`. As coroutines só vão precisar de ajuda quando algum teste passar
+   da validação e chegar ao `viewModelScope.launch`.
 4. **`formatarM3`/`formatarKm` dependem do idioma do aparelho** (`Locale.getDefault()`): o teste
    precisa fixar `pt-BR` antes, senão o resultado muda de máquina para máquina ("6,5" ou "6.5").
 5. **As regras de segurança do Firestore não estão no repositório** (só no console do Firebase).
    Para testar com o emulador local, é preciso exportá-las para um arquivo `firestore.rules`.
 
-### Dependências que seriam adicionadas (ainda NÃO adicionadas)
+### Dependências
 
-| Dependência | Para quê | Fase |
+| Dependência | Para quê | Situação |
 |---|---|---|
-| `testImplementation("androidx.arch.core:core-testing")` | `InstantTaskExecutorRule`: faz o `LiveData` funcionar no teste unitário | 2 |
-| `testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")` | `runTest` e `Dispatchers.setMain`: faz o `viewModelScope.launch` rodar no teste | 2 |
-| `testImplementation("org.robolectric:robolectric")` (opcional) | Simula o Android no computador; só se decidir não trocar o `Patterns` | 2 |
-| Firebase Emulator Suite (ferramenta `firebase-tools`, não é dependência Gradle) | Firestore e Auth locais, descartáveis, para os testes de integração | 5 |
+| `testImplementation(libs.androidx.arch.core.testing)` (`androidx.arch.core:core-testing:2.2.0`) | `InstantTaskExecutorRule`: faz o `LiveData` funcionar no teste unitário | **Adicionada** na fase 2, nos dois módulos |
+| `testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")` | `runTest` e `Dispatchers.setMain`: faz o `viewModelScope.launch` rodar no teste | Ainda não precisou: os testes da fase 2 param antes das coroutines |
+| `testImplementation("org.robolectric:robolectric")` | Simula o Android no computador | Não vai precisar: o `Patterns` foi trocado por `EmailUtils` |
+| Firebase Emulator Suite (ferramenta `firebase-tools`, não é dependência Gradle) | Firestore e Auth locais, descartáveis, para os testes de integração | Fase 5 |
 
 Os testes do Room (fase 4) **não** precisam de nada novo: `Room.inMemoryDatabaseBuilder` já vem no
 `room-runtime`, e `androidx.test.ext:junit` já está no projeto.
@@ -142,10 +146,20 @@ atribuir e pela transação de atribuir/cancelar.
   `MotoristaComId.toString()`. Eles só montam um texto; um teste ali só quebraria quando alguém
   mudasse o formato de propósito, e nunca pegaria um bug.
 
-### Fase 2 — validações dos ViewModels (precisa das dependências da seção 2)
+### Fase 2 — validações dos ViewModels (feita)
+
+Arquivos: `CadastroCaminhaoViewModelTest`, `CadastroMotoristaViewModelTest`,
+`CadastroGerenteViewModelTest`, `NovoPedidoViewModelTest`, `AtribuirViagemViewModelTest`,
+`LoginViewModelTest` (nos dois módulos) e `EmailUtilsTest`.
 
 Todos esses testes param **antes** de chamar o repositório (a validação falha e a função retorna),
-então não tocam o Firebase. Confere-se o valor de `viewModel.estado.value`.
+então não tocam o Firebase. Para isso, o formulário "padrão" de cada teste sempre tem um campo
+errado de propósito (por exemplo, a data de entrega vazia no pedido). Confere-se o valor de
+`viewModel.estado.value`.
+
+Os testes dos cadastros de motorista e de gerente **falhavam**: o `android.util.Patterns` fica
+vazio no computador. Foi o que levou a criar o `EmailUtils`. O `LoginViewModel` do motorista só
+pôde ser testado depois de deixar de depender de `Context` (antes ele era um `AndroidViewModel`).
 
 | ViewModel | Caso | Esperado no estado |
 |---|---|---|
@@ -161,8 +175,12 @@ então não tocam o Firebase. Confere-se o valor de `viewModel.estado.value`.
 | | sem data de entrega | `erroDataEntrega = true` |
 | `AtribuirViagemViewModel.atribuir` | quantidade `""`, `"0"`, `"abc"` | `erroQuantidade = true` |
 | `LoginViewModel.entrar` (os dois apps) | email ou senha vazios | `erro = CAMPOS_VAZIOS` |
-| `CadastroMotoristaViewModel.criar` | CPF com 10 dígitos | `erroCampoCpf = true` (precisa resolver o `Patterns` antes) |
-| | senha com 5 caracteres | `erroCampoSenha = true` |
+| `CadastroMotoristaViewModel.criar` | CPF com 10 dígitos, ou dígito verificador errado | `erroCampoCpf = true` |
+| | email `"ana@"` | `erroCampoEmail = true` |
+| | senha com 5 caracteres / com 6 | `erroCampoSenha = true` / `false` |
+| `CadastroGerenteViewModel.criar` | nome vazio, email sem @, senha curta | o erro do campo correspondente |
+| `EmailUtils.valido` | `ana@usina.com.br`, `joao.silva+obra@concreto.io` | `true` |
+| | `ana`, `ana@`, `@usina.com`, `ana@usina`, `ana silva@usina.com` | `false` |
 
 ### Fase 3 — regras que hoje estão "presas" (precisa extrair funções puras antes)
 
@@ -304,7 +322,7 @@ testes para fazer com 1 ou 2 motoristas:
 ## 6. Ordem sugerida
 
 1. **Fase 1** — funções puras. **Feita:** 41 testes, e o bug do arredondamento corrigido.
-2. **Fase 2** — validações dos ViewModels (adicionar `core-testing` e `coroutines-test`).
+2. **Fase 2** — validações dos ViewModels. **Feita:** 44 testes (só precisou do `core-testing`).
 3. **Fase 3** — extrair rateio, Haversine e as decisões de botão para funções puras, e testá-las.
 4. **Fase 4** — Room em memória.
 5. **Fase 5** — Firestore no emulador (a mais trabalhosa de montar, e a que protege o saldo).

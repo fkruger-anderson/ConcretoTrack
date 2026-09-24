@@ -22,9 +22,9 @@ import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import br.com.anderson.meuprimeiroprojeto.R
-import br.com.anderson.meuprimeiroprojeto.motorista.backend.AutenticacaoRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusRoteiro
 import br.com.anderson.meuprimeiroprojeto.motorista.gps.RastreamentoService
+import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.AvisoRoteiro
 import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.RoteiroUiState
 import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.RoteiroViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -44,8 +44,11 @@ import com.google.android.gms.maps.model.PolylineOptions
  * - roteiro EM_ROTA: a lista (com botão "Entregue" em cada viagem pendente), o mapa com o
  *   trajeto até agora, o botão "Encerrar roteiro" e, se preciso, o aviso de bateria.
  *
- * Também é esta aba que pede as permissões de localização e notificação, e que religa o
- * rastreamento se o Android tiver matado o serviço de GPS.
+ * Esta aba é o único lugar do app que liga e desliga o serviço de GPS ([RastreamentoService]): liga
+ * quando o motorista inicia o roteiro, religa se o Android tiver matado o serviço, e desliga quando
+ * o ViewModel avisa que o roteiro foi encerrado. Ligar um serviço precisa de um `Context`, que a
+ * tela tem e o ViewModel não pode ter. Também é aqui que se pedem as permissões de localização e
+ * de notificação.
  *
  * `OnMapReadyCallback` no cabeçalho quer dizer que esta classe "sabe responder" quando o mapa do
  * Google termina de carregar (função [onMapReady]).
@@ -122,7 +125,7 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
      */
     private val launcherPermissaoSegundoPlano =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
-            viewModel.iniciarRoteiro()
+            iniciarRoteiroELigarGps()
         }
 
     /**
@@ -166,8 +169,7 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
      */
     override fun onResume() {
         super.onResume()
-        val uid = AutenticacaoRepositorio.usuarioAtual?.uid ?: return
-        viewModel.carregar(uid)
+        viewModel.carregar()
         verificarOtimizacaoDeBateria()
     }
 
@@ -196,13 +198,15 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
     /**
      * Redesenha a aba inteira a partir do estado do ViewModel.
      *
-     * Sem roteiro: esconde tudo e mostra o aviso. Com roteiro: mostra a lista de viagens e alterna
+     * Primeiro trata os avisos de uma vez só (ver [tratarAvisos]). Depois, sem roteiro: esconde
+     * tudo e mostra o aviso de "nenhum roteiro". Com roteiro: mostra a lista de viagens e alterna
      * entre os controles de "planejando" (botão Iniciar) e "em rota" (mapa, botão Encerrar, aviso
      * de bateria). Os botões ficam desligados enquanto uma operação está em andamento ou quando a
      * regra não permite (por exemplo, encerrar com viagem pendente).
      */
     private fun exibirEstado(estado: RoteiroUiState) {
         estadoAtual = estado
+        tratarAvisos(estado)
         if (!estado.carregado) return
 
         if (!estado.temRoteiro) {
@@ -241,11 +245,26 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         }
 
         desenharTrajeto(estado)
+    }
 
-        estado.erro?.getConteudoSeNaoTratado()?.let { mensagem ->
-            Toast.makeText(requireContext(), mensagem, Toast.LENGTH_LONG).show()
+    /**
+     * Trata os avisos que só podem acontecer uma vez (ver `Evento`):
+     * - um aviso ([AvisoRoteiro]) vira um Toast com o texto certo do `strings.xml`;
+     * - "roteiro encerrado" desliga o serviço de GPS deste roteiro e mostra a confirmação.
+     *
+     * Fica separado e é chamado antes de tudo em [exibirEstado] porque o aviso de roteiro encerrado
+     * chega junto com o estado "sem roteiro", que sai de [exibirEstado] mais cedo.
+     */
+    private fun tratarAvisos(estado: RoteiroUiState) {
+        estado.aviso?.getConteudoSeNaoTratado()?.let { aviso ->
+            val texto = when (aviso) {
+                AvisoRoteiro.ENTREGA_ENFILEIRADA -> R.string.info_entrega_enfileirada
+                AvisoRoteiro.SEM_CONEXAO_ENCERRAR -> R.string.erro_sem_conexao_encerrar
+            }
+            Toast.makeText(requireContext(), texto, Toast.LENGTH_LONG).show()
         }
-        estado.roteiroEncerrado?.getConteudoSeNaoTratado()?.let {
+        estado.roteiroEncerrado?.getConteudoSeNaoTratado()?.let { roteiroId ->
+            RastreamentoService.encerrar(requireContext(), roteiroId)
             Toast.makeText(requireContext(), R.string.roteiro_encerrado_sucesso, Toast.LENGTH_SHORT).show()
         }
     }
@@ -289,7 +308,7 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
      *   desligaria sozinho mesmo);
      * - com localização, mas sem "o tempo todo": pede essa permissão primeiro (o roteiro é
      *   iniciado depois da resposta, qualquer que seja);
-     * - com tudo permitido: inicia direto.
+     * - com tudo permitido: inicia direto ([iniciarRoteiroELigarGps]).
      */
     private fun iniciarRoteiroComPermissoes() {
         val temLocalizacao = ContextCompat.checkSelfPermission(
@@ -306,10 +325,24 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         ) == PackageManager.PERMISSION_GRANTED
 
         if (temSegundoPlano) {
-            viewModel.iniciarRoteiro()
+            iniciarRoteiroELigarGps()
         } else {
             launcherPermissaoSegundoPlano.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         }
+    }
+
+    /**
+     * Inicia o roteiro e liga o serviço de GPS, as duas coisas juntas.
+     *
+     * O ViewModel grava no banco que o roteiro saiu (funciona até sem sinal). Quem liga o serviço é
+     * a tela, porque ligar um serviço precisa de um `Context` — e o ViewModel, pela regra da
+     * disciplina, não pode ter um. O serviço é ligado na hora, sem esperar o banco responder: assim
+     * o rastreamento começa mesmo se o caminhão sair da usina sem sinal.
+     */
+    private fun iniciarRoteiroELigarGps() {
+        val roteiroId = estadoAtual.roteiroId ?: return
+        viewModel.iniciarRoteiro()
+        RastreamentoService.iniciar(requireContext(), roteiroId)
     }
 
     /**

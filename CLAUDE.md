@@ -137,7 +137,8 @@ motorista precisar fazer nada.
 * Isso é diferente de atribuir viagem (gerente) e cadastrar pedido, que também usam transação mas
 *precisam* de conexão na hora (dá erro claro se não tiver) — não têm fila de reenvio, porque são
 ações do gerente, feitas do escritório, não em campo sem sinal.
-* minSdk sugerido: 26 (Android 8.0).
+* minSdk: 34 (Android 14) nos dois apps. Decidido manter assim (o código usa recursos do Android
+10, 13 e 14 sem checagem de versão); só baixar se aparecer motorista com celular mais antigo.
 * Testar em celular real (GPS e serviço em segundo plano não são confiáveis no emulador).
 
 ## Etapas (fazer UMA por vez, na ordem)

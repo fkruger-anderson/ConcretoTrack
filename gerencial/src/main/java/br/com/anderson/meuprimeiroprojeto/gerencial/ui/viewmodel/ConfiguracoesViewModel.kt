@@ -14,7 +14,10 @@ import kotlinx.coroutines.launch
  */
 data class ConfiguracoesUiState(val nomeGerente: String = "")
 
-/** O "cérebro" da aba Configurações: só busca o nome do gerente logado para mostrar "Olá, fulano". */
+/**
+ * O "cérebro" da aba Configurações: busca o nome do gerente logado para mostrar "Olá, fulano" e faz
+ * o logout. A tela não fala com repositório nenhum; ela só desenha e navega.
+ */
 class ConfiguracoesViewModel : ViewModel() {
 
     companion object {
@@ -43,4 +46,10 @@ class ConfiguracoesViewModel : ViewModel() {
             _estado.value = ConfiguracoesUiState(nomeGerente = perfil?.nome ?: "")
         }
     }
+
+    /**
+     * Faz o logout: o Firebase Auth esquece o gerente logado neste celular. Quem leva de volta para
+     * a tela de login é a tela (navegar é trabalho dela).
+     */
+    fun sair() = AutenticacaoRepositorio.sair()
 }

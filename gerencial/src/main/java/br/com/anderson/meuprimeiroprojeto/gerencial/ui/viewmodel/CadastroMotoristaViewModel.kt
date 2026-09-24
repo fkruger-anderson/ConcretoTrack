@@ -1,12 +1,12 @@
 package br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel
 
-import android.util.Patterns
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.MotoristaRepositorio
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.DocumentoUtils
+import br.com.anderson.meuprimeiroprojeto.gerencial.dados.EmailUtils
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
@@ -56,7 +56,7 @@ class CadastroMotoristaViewModel : ViewModel() {
      * - Nome: não pode ser vazio.
      * - CPF: precisa ter 11 números e dígitos verificadores certos (motorista é sempre pessoa
      *   física, então CNPJ não serve). É guardado só com os números.
-     * - Email: precisa ter formato de email.
+     * - Email: precisa ter formato de email (conferido por [EmailUtils]).
      * - Senha: pelo menos 6 caracteres (o mínimo do Firebase).
      *
      * Cada `catch` transforma um erro do Firebase num tipo de [CadastroMotoristaErro].
@@ -68,7 +68,7 @@ class CadastroMotoristaViewModel : ViewModel() {
 
         val nomeInvalido = nome.isEmpty()
         val cpfInvalido = cpf.length != 11 || !DocumentoUtils.documentoValido(cpf)
-        val emailInvalido = email.isEmpty() || !Patterns.EMAIL_ADDRESS.matcher(email).matches()
+        val emailInvalido = email.isEmpty() || !EmailUtils.valido(email)
         val senhaInvalida = senha.length < 6
 
         if (nomeInvalido || cpfInvalido || emailInvalido || senhaInvalida) {

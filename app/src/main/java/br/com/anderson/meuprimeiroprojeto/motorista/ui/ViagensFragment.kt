@@ -10,8 +10,6 @@ import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import br.com.anderson.meuprimeiroprojeto.R
-import br.com.anderson.meuprimeiroprojeto.motorista.backend.AutenticacaoRepositorio
-import br.com.anderson.meuprimeiroprojeto.motorista.sessao.SessaoMotorista
 import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.ViagensAbertasUiState
 import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.ViagensAbertasViewModel
 
@@ -35,9 +33,9 @@ class ViagensFragment : Fragment(R.layout.fragment_viagens) {
     /**
      * Chamado pelo Android logo depois que a tela do fragment foi montada. É o lugar para ligar os
      * componentes:
-     * - mostra "Olá, <nome>" usando o nome guardado no celular ([SessaoMotorista]);
-     * - configura o botão Sair: faz logout no Firebase, apaga o nome guardado, abre o login e fecha
-     *   a tela atual;
+     * - mostra "Olá, <nome>" com o nome que o ViewModel devolve;
+     * - configura o botão Sair: o ViewModel faz o logout e a tela abre o login e se fecha (navegar
+     *   entre telas é trabalho da tela; falar com o Firebase é trabalho do ViewModel);
      * - prepara a lista (RecyclerView). O `LinearLayoutManager` diz que os itens ficam um embaixo
      *   do outro;
      * - começa a observar o estado do ViewModel. `viewLifecycleOwner` faz a observação parar
@@ -47,11 +45,10 @@ class ViagensFragment : Fragment(R.layout.fragment_viagens) {
         super.onViewCreated(view, savedInstanceState)
 
         view.findViewById<TextView>(R.id.textBoasVindas).text =
-            getString(R.string.viagens_boas_vindas, SessaoMotorista.nomeMotorista(requireContext()))
+            getString(R.string.viagens_boas_vindas, viewModel.nomeMotorista())
 
         view.findViewById<Button>(R.id.botaoSair).setOnClickListener {
-            AutenticacaoRepositorio.sair()
-            SessaoMotorista.sair(requireContext())
+            viewModel.sair()
             startActivity(Intent(requireContext(), LoginActivity::class.java))
             requireActivity().finish()
         }
@@ -70,8 +67,7 @@ class ViagensFragment : Fragment(R.layout.fragment_viagens) {
      */
     override fun onResume() {
         super.onResume()
-        val uid = AutenticacaoRepositorio.usuarioAtual?.uid ?: return
-        viewModel.carregar(uid)
+        viewModel.carregar()
     }
 
     /**
