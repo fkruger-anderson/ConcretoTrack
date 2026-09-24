@@ -8,20 +8,29 @@ import androidx.lifecycle.viewModelScope
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.AutenticacaoRepositorio
 import kotlinx.coroutines.launch
 
-/** Estado exibido por [ConfiguracoesFragment][br.com.anderson.meuprimeiroprojeto.gerencial.ui.ConfiguracoesFragment]. */
+/**
+ * O estado da aba Configurações ([ConfiguracoesFragment][br.com.anderson.meuprimeiroprojeto.gerencial.ui.ConfiguracoesFragment]):
+ * só o nome do gerente, para a saudação.
+ */
 data class ConfiguracoesUiState(val nomeGerente: String = "")
 
-/** Só busca o nome do gerente logado pra mostrar a saudação. */
+/** O "cérebro" da aba Configurações: só busca o nome do gerente logado para mostrar "Olá, fulano". */
 class ConfiguracoesViewModel : ViewModel() {
 
     companion object {
+        // Etiqueta das mensagens desta classe no Logcat.
         private const val TAG = "ConfiguracoesViewModel"
     }
 
+    // `_estado` é a versão que o ViewModel pode mudar; `estado` é a versão só de leitura da tela.
     private val _estado = MutableLiveData(ConfiguracoesUiState())
+    /** O estado atual da aba; a tela é avisada toda vez que ele muda. */
     val estado: LiveData<ConfiguracoesUiState> = _estado
 
-    /** Busca o perfil do gerente logado no Firestore; se falhar, mostra a saudação sem nome. */
+    /**
+     * Busca o perfil do gerente logado no Firestore. Se ninguém estiver logado, não faz nada. Se a
+     * busca falhar, registra no Logcat e mostra a saudação sem o nome.
+     */
     fun carregar() {
         val uid = AutenticacaoRepositorio.usuarioAtual?.uid ?: return
         viewModelScope.launch {

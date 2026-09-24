@@ -37,22 +37,49 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 /**
- * Serviço em primeiro plano que grava pontos de GPS do roteiro em rota. Só existe um roteiro
- * ativo por motorista por vez, então (diferente da versão anterior deste serviço, que rastreava
- * várias viagens simultâneas) volta a ser um único alvo — mais simples.
+ * O "rastreador" do caminhão: enquanto o roteiro está em rota, lê a posição do GPS a cada 10
+ * segundos e guarda.
+ *
+ * Um `Service` (serviço) é uma parte do app que trabalha sem ter tela. Isso é necessário aqui
+ * porque o motorista vai trocar de app (abrir o Google Maps, atender ligação) e apagar a tela, e o
+ * rastreamento precisa continuar.
+ *
+ * Ele é um serviço "em primeiro plano" (foreground): mostra uma notificação fixa enquanto roda.
+ * O Android exige isso para qualquer app que use a localização em segundo plano, para o usuário
+ * sempre saber que está sendo rastreado. Sem a notificação, o sistema mataria o serviço.
+ *
+ * A cada posição recebida, o serviço:
+ * 1. grava o ponto no banco do celular (Room), para não perder nada sem sinal;
+ * 2. atualiza a "última posição" do roteiro no Firestore (é o que o mapa do gerente mostra);
+ * 3. tenta enviar ao Firestore os pontos que ficaram para trás (a fila offline);
+ * 4. tenta reenviar as confirmações de entrega que ficaram para trás.
+ *
+ * Só existe um roteiro ativo por motorista, então o serviço rastreia um roteiro de cada vez.
  */
 class RastreamentoService : Service() {
 
+    // "companion object": coisas que pertencem à classe, não a um objeto dela (parecido com o
+    // "static" do Java). Aqui ficam as constantes e as duas funções para ligar/desligar o serviço.
     companion object {
+        /** Nome do "extra" (dado extra enviado junto do Intent) que leva o id do roteiro. */
         const val EXTRA_ROTEIRO_ID = "roteiro_id"
+        // As "ações" dizem ao serviço o que fazer quando ele recebe um Intent: começar ou parar.
         private const val ACTION_INICIAR = "br.com.anderson.meuprimeiroprojeto.INICIAR_ROTEIRO"
         private const val ACTION_ENCERRAR = "br.com.anderson.meuprimeiroprojeto.ENCERRAR_ROTEIRO"
         private const val CANAL_ID = "rastreamento_viagem"
         private const val NOTIFICACAO_ID = 1001
+        // De quanto em quanto tempo pedir uma posição nova: 10 segundos (em milissegundos).
         private const val INTERVALO_ATUALIZACAO_MS = 10_000L
         private const val TAG = "RastreamentoService"
 
-        /** Começa a rastrear este roteiro. */
+        /**
+         * Liga o rastreamento deste roteiro. Quem chama é a aba Roteiro (ao iniciar o roteiro ou ao
+         * reabrir um roteiro que já estava em rota).
+         *
+         * Monta um `Intent` (um "pedido" para o Android) apontando para este serviço, com a ação
+         * INICIAR e o id do roteiro. `startForegroundService` avisa ao Android que o serviço vai
+         * mostrar a notificação fixa logo em seguida. Pode ser chamada mais de uma vez sem problema.
+         */
         fun iniciar(context: Context, roteiroId: String) {
             val intent = Intent(context, RastreamentoService::class.java)
                 .setAction(ACTION_INICIAR)
@@ -60,7 +87,7 @@ class RastreamentoService : Service() {
             ContextCompat.startForegroundService(context, intent)
         }
 
-        /** Para de rastrear este roteiro. */
+        /** Desliga o rastreamento deste roteiro. Chamada quando o motorista encerra o roteiro. */
         fun encerrar(context: Context, roteiroId: String) {
             val intent = Intent(context, RastreamentoService::class.java)
                 .setAction(ACTION_ENCERRAR)
@@ -69,22 +96,40 @@ class RastreamentoService : Service() {
         }
     }
 
+    // O "escopo" onde as coroutines deste serviço rodam. `Dispatchers.IO` manda o trabalho para
+    // threads próprias para banco e rede (fora da thread da tela). `SupervisorJob` faz com que, se
+    // uma tarefa der erro, as outras continuem.
     private val escopo = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    // O cliente de localização do Google Play Services (escolhe sozinho entre GPS, Wi-Fi e rede
+    // de celular para dar a melhor posição). `lateinit` = será preenchido depois, no onCreate.
     private lateinit var clienteLocalizacao: FusedLocationProviderClient
+    // A função que recebe cada posição nova; guardada para poder "desligá-la" depois.
     private var callbackLocalizacao: LocationCallback? = null
+    // Id do roteiro sendo rastreado agora, ou null se nenhum.
     private var roteiroAtivo: String? = null
 
-    /** Prepara o cliente de localização (FusedLocationProviderClient) quando o serviço é criado. */
+    /**
+     * Chamado pelo Android uma única vez, quando o serviço é criado. Aqui só se prepara o cliente de
+     * localização.
+     */
     override fun onCreate() {
         super.onCreate()
         clienteLocalizacao = LocationServices.getFusedLocationProviderClient(this)
     }
 
     /**
-     * START_STICKY: se o sistema matar o processo por falta de memória, o Android tenta recriar
-     * o serviço (o Intent original pode vir nulo nesse caso — perde o [roteiroAtivo] em memória;
-     * quem recupera isso é a tela de detalhe do roteiro, chamando [iniciar] de novo ao reabrir um
-     * roteiro que já está EM_ROTA).
+     * Chamado pelo Android toda vez que alguém chama [iniciar] ou [encerrar] (cada chamada entrega
+     * um `Intent` aqui).
+     *
+     * - Sem id de roteiro no Intent: se não estava rastreando nada, desliga o serviço.
+     * - Ação ENCERRAR: se é o roteiro que está sendo rastreado, para o GPS e desliga o serviço
+     *   (`stopSelf`). É o caminho que para o serviço quando ele não é mais necessário.
+     * - Ação INICIAR: guarda o roteiro, mostra a notificação fixa (`startForeground`) e liga o GPS.
+     *
+     * O valor devolvido diz ao Android o que fazer se ele precisar matar o serviço por falta de
+     * memória. `START_STICKY` = "tente recriar o serviço depois". Nesse caso o Intent chega vazio
+     * e o id do roteiro se perde; quem recupera é a aba Roteiro, que chama [iniciar] de novo quando
+     * é aberta com um roteiro em rota. `START_NOT_STICKY` = "não precisa recriar".
      */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val roteiroId = intent?.getStringExtra(EXTRA_ROTEIRO_ID)
@@ -110,9 +155,14 @@ class RastreamentoService : Service() {
     }
 
     /**
-     * Registra o callback do FusedLocationProviderClient para receber posições a cada
-     * [INTERVALO_ATUALIZACAO_MS]; cada posição recebida é gravada no Room e depois dispara a
-     * sincronização da fila offline e a atualização da posição atual no Firestore.
+     * Pede ao Android para receber a posição do caminhão a cada 10 segundos, com alta precisão.
+     *
+     * Primeiro confere se o app tem permissão de localização; sem ela, desliga o serviço (o
+     * Android não entregaria posição nenhuma).
+     *
+     * O `LocationCallback` é um objeto com uma função ([LocationCallback.onLocationResult]) que o
+     * Android chama sozinho a cada posição nova. Como gravar no banco e na internet demora, esse
+     * trabalho é jogado para uma coroutine (`escopo.launch`), que roda fora da thread da tela.
      */
     private fun iniciarAtualizacoesDeLocalizacao() {
         val temPermissao = ActivityCompat.checkSelfPermission(
@@ -129,7 +179,10 @@ class RastreamentoService : Service() {
         val alvoRoteiroId = roteiroAtivo ?: return
         val pedido = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, INTERVALO_ATUALIZACAO_MS).build()
         val callback = object : LocationCallback() {
-            /** Grava a posição recebida no Room e atualiza o Firestore. */
+            /**
+             * Chamada pelo Android a cada posição nova. Grava o ponto no Room e depois cuida do
+             * Firestore (posição atual e filas offline).
+             */
             override fun onLocationResult(resultado: LocationResult) {
                 val localizacao = resultado.lastLocation ?: return
                 val horario = System.currentTimeMillis()
@@ -153,10 +206,15 @@ class RastreamentoService : Service() {
     }
 
     /**
-     * A fila offline: tenta subir para o Firestore os pontos que ainda não foram sincronizados.
-     * Cada ponto é tentado de forma independente — se um falhar (sem conexão, erro do servidor
-     * etc.) os outros pendentes continuam sendo tentados. O ponto que falhou continua no Room
-     * como pendente e entra na fila de novo na próxima atualização (10 em 10s).
+     * A fila offline de pontos de GPS: tenta enviar ao Firestore cada ponto que ainda está só no
+     * celular.
+     *
+     * Cada ponto é tentado separadamente: se um falhar (sem internet, erro do servidor), os
+     * outros continuam sendo tentados. O que falhou continua marcado como pendente no Room e entra
+     * de novo na próxima tentativa, 10 segundos depois.
+     *
+     * O nome do documento é "ponto_" + o número do ponto no Room. Assim, se o mesmo ponto for
+     * enviado duas vezes, ele só é sobrescrito, sem ficar repetido no Firestore.
      */
     private suspend fun sincronizarPontosPendentes() {
         val dao = AppDatabase.obter(applicationContext).pontoGpsDao()
@@ -180,10 +238,9 @@ class RastreamentoService : Service() {
     }
 
     /**
-     * Fila offline de confirmações de entrega: tenta reenviar cada uma que ainda não foi
-     * confirmada no servidor (por exemplo, porque o motorista marcou como entregue sem sinal —
-     * ver [RoteiroRepositorio.marcarEntregue]). Mesma lógica de tentativa independente da fila
-     * de pontos de GPS logo acima.
+     * A fila offline de confirmações de entrega: tenta reenviar cada entrega que o motorista
+     * marcou sem sinal (ver [RoteiroRepositorio.marcarEntregue]). Quando o servidor aceita, a
+     * entrega sai da fila. Mesma lógica da fila de pontos: cada uma é tentada separadamente.
      */
     private suspend fun sincronizarEntregasPendentes() {
         val dao = AppDatabase.obter(applicationContext).entregaPendenteDao()
@@ -198,10 +255,11 @@ class RastreamentoService : Service() {
     }
 
     /**
-     * Atualiza a posição atual no próprio documento do roteiro — é o que o mapa em tempo real
-     * do app gerencial escuta. Separado da fila offline de propósito: se falhar por falta de
-     * conexão não tem problema guardar pra depois, a próxima atualização (10s) já traz uma
-     * posição mais nova mesmo.
+     * Grava a posição atual no próprio documento do roteiro. É esse campo que o mapa do app
+     * gerencial fica "escutando" para mover o caminhão na tela.
+     *
+     * Diferente dos pontos, isto não entra em fila: se falhar por falta de internet, tudo bem,
+     * porque daqui a 10 segundos chega uma posição mais nova mesmo.
      */
     private suspend fun atualizarPosicaoAtual(roteiroId: String, latitude: Double, longitude: Double, horario: Long) {
         try {
@@ -219,7 +277,11 @@ class RastreamentoService : Service() {
         }
     }
 
-    /** Canal exigido a partir do Android 8 para mostrar a notificação fixa do serviço. */
+    /**
+     * Cria o "canal" da notificação. Desde o Android 8, toda notificação precisa pertencer a um
+     * canal, que o usuário pode configurar nas opções do sistema (som, importância). Criar um canal
+     * que já existe não faz nada, então pode ser chamado sempre.
+     */
     private fun criarCanalDeNotificacao() {
         val gerenciador = getSystemService(NotificationManager::class.java)
         val canal = NotificationChannel(
@@ -228,7 +290,11 @@ class RastreamentoService : Service() {
         gerenciador.createNotificationChannel(canal)
     }
 
-    /** Notificação fixa (ongoing) que o foreground service precisa manter visível enquanto roda. */
+    /**
+     * Monta a notificação fixa que fica visível enquanto o rastreamento roda. `setOngoing(true)`
+     * impede o motorista de dispensá-la arrastando para o lado. Tocar na notificação abre a tela
+     * inicial do app (o `PendingIntent` é um "Intent guardado para ser usado depois").
+     */
     private fun criarNotificacao(): Notification {
         val intentAbrirApp = PendingIntent.getActivity(
             this, 0, Intent(this, MotoristaHomeActivity::class.java), PendingIntent.FLAG_IMMUTABLE
@@ -242,13 +308,20 @@ class RastreamentoService : Service() {
             .build()
     }
 
-    /** Para de receber localizações e cancela as coroutines pendentes ao destruir o serviço. */
+    /**
+     * Chamado pelo Android quando o serviço vai ser destruído. Libera o que foi criado: para de
+     * receber posições do GPS e cancela as coroutines que ainda estavam rodando.
+     */
     override fun onDestroy() {
         super.onDestroy()
         callbackLocalizacao?.let { clienteLocalizacao.removeLocationUpdates(it) }
         escopo.cancel()
     }
 
-    /** Serviço não usa binding (é iniciado com startService/startForegroundService, não bind). */
+    /**
+     * Um serviço pode ser "ligado" a uma tela (bind) para conversar com ela o tempo todo. Este não
+     * usa isso: ele só é iniciado e parado por Intents. Devolver `null` quer dizer "não aceito
+     * ligação".
+     */
     override fun onBind(intent: Intent?): IBinder? = null
 }

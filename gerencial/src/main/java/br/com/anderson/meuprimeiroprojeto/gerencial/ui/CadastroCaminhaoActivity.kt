@@ -14,11 +14,15 @@ import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.CadastroCaminha
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.CadastroCaminhaoUiState
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.CadastroCaminhaoViewModel
 
-/** Cadastro de caminhão pelo gerente (placa, marca, modelo, ano) — usado depois na atribuição de viagens. */
+/**
+ * A tela de cadastro de caminhão (placa, marca, modelo e ano). Os caminhões cadastrados aparecem
+ * depois na tela de atribuir viagem. Aberta pela aba Configurações.
+ */
 class CadastroCaminhaoActivity : AppCompatActivity() {
 
     private val viewModel: CadastroCaminhaoViewModel by viewModels()
 
+    // Componentes da tela, preenchidos no onCreate com findViewById.
     private lateinit var editPlaca: EditText
     private lateinit var editMarca: EditText
     private lateinit var editModelo: EditText
@@ -27,7 +31,10 @@ class CadastroCaminhaoActivity : AppCompatActivity() {
     private lateinit var progresso: ProgressBar
     private lateinit var textErro: TextView
 
-    /** Liga os campos da tela, o clique do botão e a observação do estado da ViewModel. */
+    /**
+     * Chamado pelo Android quando a tela é criada: liga os campos, o botão Criar (que entrega os
+     * textos digitados ao ViewModel) e a observação do estado.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_cadastro_caminhao)
@@ -52,7 +59,11 @@ class CadastroCaminhaoActivity : AppCompatActivity() {
         viewModel.estado.observe(this) { estado -> exibirEstado(estado) }
     }
 
-    /** Atualiza progresso, erros de campo, erro geral e fecha a tela com um toast quando o cadastro dá certo. */
+    /**
+     * Desenha o estado atual: rodinha de carregando, erro nos campos placa e ano (o `.error` de um
+     * campo mostra um ícone vermelho com a mensagem), a mensagem geral de erro e, se deu certo, um
+     * Toast e o fechamento da tela.
+     */
     private fun exibirEstado(estado: CadastroCaminhaoUiState) {
         progresso.visibility = if (estado.carregando) View.VISIBLE else View.GONE
         botaoCriar.isEnabled = !estado.carregando

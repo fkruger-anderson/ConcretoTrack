@@ -11,10 +11,19 @@ import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusViagem
 import br.com.anderson.meuprimeiroprojeto.motorista.formatarM3
 
 /**
- * Adapter do RecyclerView com as viagens em aberto do motorista (atribuídas ou em rota) na
- * [ViagensAbertasActivity][br.com.anderson.meuprimeiroprojeto.motorista.ui.ViagensAbertasActivity].
- * Não guarda estado próprio: recebe a lista pronta e um callback de clique, e só desenha.
- * CPF/CNPJ do destinatário não aparece aqui — só nome, endereço e m³ (regra de LGPD do projeto).
+ * O "Adapter" da lista da aba Viagens ([ViagensFragment]).
+ *
+ * Um RecyclerView (a lista) não sabe nada sobre viagens: ele só sabe rolar e reaproveitar
+ * linhas. O Adapter é o intermediário que diz a ele quantos itens existem e como preencher cada
+ * linha com os dados de uma viagem.
+ *
+ * "Reaproveitar" é o truque do RecyclerView: em vez de criar uma linha para cada item da lista
+ * (o que gastaria muita memória), ele cria só as que cabem na tela e, ao rolar, reusa as que
+ * saíram por cima para mostrar os itens que entram por baixo.
+ *
+ * Este Adapter não guarda nada além do que recebe: a lista pronta e a função [aoClicar], que diz
+ * o que fazer quando um item é tocado. Só nome, endereço e m³ aparecem — nunca o CPF/CNPJ do
+ * destinatário (LGPD).
  */
 class ViagemAbertaAdapter(
     private val itens: List<ViagemAbertaComPedido>,
@@ -22,8 +31,9 @@ class ViagemAbertaAdapter(
 ) : RecyclerView.Adapter<ViagemAbertaAdapter.ViewHolder>() {
 
     /**
-     * Guarda as referências das views de um item já inflado (`findViewById` só uma vez por item
-     * reciclado, não a cada scroll) — é o papel de um ViewHolder no padrão do RecyclerView.
+     * O "ViewHolder" guarda os componentes de uma linha da lista, encontrados uma única vez com
+     * `findViewById` quando a linha é criada. Quando a linha é reaproveitada, os componentes já
+     * estão à mão, e a rolagem fica suave.
      */
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val textDestinatario: TextView = view.findViewById(R.id.textDestinatario)
@@ -32,13 +42,19 @@ class ViagemAbertaAdapter(
         val textStatus: TextView = view.findViewById(R.id.textStatus)
     }
 
-    /** Infla o layout de um item da lista (`item_viagem_aberta.xml`) e cria o ViewHolder dele. */
+    /**
+     * Chamado pelo RecyclerView quando ele precisa de uma linha nova. "Infla" (transforma o XML em
+     * componentes de verdade) o layout `item_viagem_aberta.xml` e embrulha num ViewHolder.
+     */
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_viagem_aberta, parent, false)
         return ViewHolder(view)
     }
 
-    /** Preenche as views de um ViewHolder (reciclado ou novo) com os dados do item da posição. */
+    /**
+     * Chamado pelo RecyclerView para colocar os dados do item da posição [position] numa linha
+     * (nova ou reaproveitada): destinatário, endereço, m³ + caminhão e a situação.
+     */
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = itens[position]
         val contexto = holder.itemView.context
@@ -57,6 +73,6 @@ class ViagemAbertaAdapter(
         holder.itemView.setOnClickListener { aoClicar(item) }
     }
 
-    /** Total de itens da lista; o RecyclerView usa isso pra saber quantas posições existem. */
+    /** Quantos itens a lista tem. O RecyclerView usa isso para saber até onde dá para rolar. */
     override fun getItemCount(): Int = itens.size
 }

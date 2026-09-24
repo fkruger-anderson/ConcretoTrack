@@ -17,11 +17,15 @@ import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.CadastroMotoris
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.CadastroMotoristaUiState
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.CadastroMotoristaViewModel
 
-/** Cadastro de motorista pelo gerente — cria o login (email/senha) e o perfil dele. */
+/**
+ * A tela de cadastro de motorista (nome, CPF, email e senha). Cria o login que o motorista vai usar
+ * no app dele e o perfil. Aberta pela aba Configurações.
+ */
 class CadastroMotoristaActivity : AppCompatActivity() {
 
     private val viewModel: CadastroMotoristaViewModel by viewModels()
 
+    // Componentes da tela, preenchidos no onCreate com findViewById.
     private lateinit var editNome: EditText
     private lateinit var editCpf: EditText
     private lateinit var editEmail: EditText
@@ -30,7 +34,10 @@ class CadastroMotoristaActivity : AppCompatActivity() {
     private lateinit var progresso: ProgressBar
     private lateinit var textErro: TextView
 
-    /** Liga os campos da tela (inclusive a máscara de CPF), o clique do botão e a observação do estado da ViewModel. */
+    /**
+     * Chamado pelo Android quando a tela é criada: liga os campos, a máscara de CPF ([MascaraCpf]),
+     * o botão Criar (que entrega os textos ao ViewModel) e a observação do estado.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_cadastro_motorista)
@@ -56,7 +63,10 @@ class CadastroMotoristaActivity : AppCompatActivity() {
         viewModel.estado.observe(this) { estado -> exibirEstado(estado) }
     }
 
-    /** Atualiza progresso, erros de campo, erro geral e fecha a tela com um toast quando o cadastro dá certo. */
+    /**
+     * Desenha o estado atual: rodinha de carregando, erros em cada campo, a mensagem geral de erro
+     * e, se deu certo, um Toast e o fechamento da tela.
+     */
     private fun exibirEstado(estado: CadastroMotoristaUiState) {
         progresso.visibility = if (estado.carregando) View.VISIBLE else View.GONE
         botaoCriar.isEnabled = !estado.carregando
@@ -82,15 +92,25 @@ class CadastroMotoristaActivity : AppCompatActivity() {
         }
     }
 
-    /** Só aceita CPF aqui (motorista é sempre pessoa física), reformata como 000.000.000-00. */
+    /**
+     * Coloca a máscara de CPF (000.000.000-00) enquanto o gerente digita. Aceita só CPF (no máximo
+     * 11 números), porque motorista é sempre pessoa física.
+     *
+     * Um `TextWatcher` é um "vigia" do campo de texto: o Android chama as funções dele antes,
+     * durante e depois de cada mudança.
+     */
     private class MascaraCpf(private val campo: EditText) : TextWatcher {
+        // Evita que a própria troca de texto feita aqui dispare o vigia de novo (um laço sem fim).
         private var atualizandoTexto = false
 
         // Exigidos pela interface TextWatcher, mas não são usados aqui.
         override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
         override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
 
-        /** Reformata o texto a cada digitação; a flag evita loop infinito (setText dispara este mesmo callback). */
+        /**
+         * Chamado depois de cada mudança no texto: fica só com os números (no máximo 11), refaz a
+         * máscara e, se o texto mudou, troca o conteúdo do campo e põe o cursor no fim.
+         */
         override fun afterTextChanged(s: Editable?) {
             if (atualizandoTexto || s == null) return
             val digitos = DocumentoUtils.apenasDigitos(s.toString()).take(11)

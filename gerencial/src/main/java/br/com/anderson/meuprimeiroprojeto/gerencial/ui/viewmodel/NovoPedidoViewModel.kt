@@ -10,34 +10,61 @@ import br.com.anderson.meuprimeiroprojeto.gerencial.dados.DocumentoUtils
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.Uf
 import kotlinx.coroutines.launch
 
-/** Estado exibido por [NovoPedidoActivity][br.com.anderson.meuprimeiroprojeto.gerencial.ui.NovoPedidoActivity]. */
+/**
+ * O estado da tela de novo pedido ([NovoPedidoActivity][br.com.anderson.meuprimeiroprojeto.gerencial.ui.NovoPedidoActivity]).
+ *
+ * Cada `erroXxx` diz se aquele campo está com problema; a tela marca o campo em vermelho com o
+ * texto certo. Assim o ViewModel não precisa saber nada de textos nem de cores.
+ */
 data class NovoPedidoUiState(
+    /** `true` enquanto o pedido está sendo salvo. */
     val carregando: Boolean = false,
     val erroDocumento: Boolean = false,
     val erroNome: Boolean = false,
+    /** Qualquer problema no endereço (CEP, rua, número, bairro, cidade ou UF). */
     val erroEndereco: Boolean = false,
     val erroQuantidade: Boolean = false,
     val erroDistanciaKm: Boolean = false,
     val erroDataEntrega: Boolean = false,
+    /** Os campos estavam certos, mas não deu para gravar (por exemplo, sem internet). */
     val erroSalvar: Boolean = false,
+    /** Aviso de sucesso, levando o número que o pedido recebeu; tratado uma vez só. */
     val sucesso: Evento<Int>? = null
 )
 
-/** Valida os campos (documento, endereço digitado à mão, quantidade) e cadastra o pedido no Firestore. */
+/**
+ * O "cérebro" da tela de novo pedido: confere todos os campos e, se estiver tudo certo, cadastra
+ * o pedido no Firestore.
+ */
 class NovoPedidoViewModel : ViewModel() {
 
     companion object {
+        // Etiqueta das mensagens desta classe no Logcat.
         private const val TAG = "NovoPedidoViewModel"
     }
 
+    // `_estado` é a versão que o ViewModel pode mudar; `estado` é a versão só de leitura da tela.
     private val _estado = MutableLiveData(NovoPedidoUiState())
+    /** O estado atual da tela; a tela é avisada toda vez que ele muda. */
     val estado: LiveData<NovoPedidoUiState> = _estado
 
     /**
-     * Valida documento (CPF/CNPJ, com dígito verificador), nome, endereço e quantidade; só chama
-     * o repositório se tudo estiver certo. Cadastrar pedido precisa de conexão na hora, então um
-     * erro genérico aqui vira mensagem de "não deu pra salvar" (sem fila offline, diferente dos
-     * pontos de GPS do motorista).
+     * Confere os campos e, se todos estiverem certos, salva o pedido.
+     *
+     * O que é conferido:
+     * - documento: precisa ser CPF ou CNPJ válido (dígitos verificadores certos);
+     * - nome: não pode ser vazio;
+     * - endereço: CEP com 8 números, rua/número/bairro/cidade preenchidos e UF existente;
+     * - quantidade e distância: números maiores que zero (a vírgula é trocada por ponto, porque o
+     *   Kotlin só entende "2.5");
+     * - data de entrega: precisa ter sido escolhida.
+     *
+     * Se algo estiver errado, publica quais campos têm erro e para (nem usa a internet). Se estiver
+     * tudo certo, grava no Firestore. Cadastrar precisa de internet na hora; se não houver, a tela
+     * mostra "não foi possível salvar" (não existe fila offline para o gerente).
+     *
+     * O `requireNotNull(x)` diz ao Kotlin "tenho certeza que isto não é nulo aqui" — e é verdade,
+     * porque a conferência de cima já garantiu.
      */
     fun salvar(
         documentoDigitado: String,

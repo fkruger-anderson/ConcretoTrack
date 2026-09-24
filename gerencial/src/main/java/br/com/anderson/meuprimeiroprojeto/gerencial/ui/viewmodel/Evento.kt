@@ -1,16 +1,24 @@
 package br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel
 
 /**
- * Envelope para um valor que a View deve tratar (mostrar toast, navegar) só uma vez.
- * Sem isso, um LiveData comum reentrega o último valor pra quem observar de novo — por
- * exemplo, se a tela girar logo depois de um sucesso, a navegação disparia outra vez à toa.
- * Aqui, a primeira leitura "consome" o conteúdo; leituras seguintes recebem null.
+ * Uma "embalagem" para avisos que a tela deve tratar uma única vez, como mostrar um Toast ou
+ * fechar a tela (o app do motorista tem uma cópia igual).
+ *
+ * O problema: o `LiveData` sempre entrega o último valor para quem começa a observar. Quando o
+ * celular gira, a tela é recriada, observa de novo e receberia outra vez o aviso antigo — fechando
+ * a tela ou mostrando o Toast duas vezes.
+ *
+ * Com o `Evento`, a primeira leitura "consome" o conteúdo; as seguintes recebem `null`.
+ *
+ * `<out T>`: funciona para qualquer tipo de conteúdo. `Unit` é o tipo "sem valor" do Kotlin, usado
+ * quando só importa que o aviso aconteceu.
  */
 class Evento<out T>(private val conteudo: T) {
 
+    // Vira `true` depois da primeira leitura.
     private var tratado = false
 
-    /** Retorna o conteúdo só na primeira chamada; depois disso, sempre retorna null. */
+    /** Devolve o conteúdo só na primeira vez que é chamada; depois disso, sempre devolve `null`. */
     fun getConteudoSeNaoTratado(): T? {
         if (tratado) return null
         tratado = true

@@ -12,28 +12,44 @@ import br.com.anderson.meuprimeiroprojeto.gerencial.formatarM3
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.ItemRateio
 import java.util.Locale
 
-/** Uma linha da tabela de rateio do roteiro: pedido, peso e km atribuído. */
+/**
+ * O "Adapter" da tabela de rateio no detalhe do roteiro ([DetalhesRoteiroActivity]). Cada linha
+ * mostra um pedido do roteiro, o peso dele (m³ × distância) e os km que couberam a ele.
+ *
+ * O Adapter é o intermediário entre a lista de dados e o RecyclerView (a lista rolável): diz
+ * quantos itens há e como preencher cada linha.
+ */
 class ItemRateioAdapter(
     private val itens: List<ItemRateio>
 ) : RecyclerView.Adapter<ItemRateioAdapter.ViewHolder>() {
 
-    /** Referências das Views de um item da lista, encontradas uma única vez (evita findViewById repetido). */
+    /**
+     * Guarda os componentes de uma linha, encontrados uma única vez com `findViewById`. Quando a
+     * linha é reaproveitada na rolagem, eles já estão à mão.
+     */
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val textPedido: TextView = view.findViewById(R.id.textPedido)
         val textPeso: TextView = view.findViewById(R.id.textPeso)
         val textRateio: TextView = view.findViewById(R.id.textRateio)
     }
 
-    /** Infla o layout de um item da tabela de rateio. */
+    /**
+     * Chamado pelo RecyclerView quando precisa de uma linha nova: transforma ("infla") o layout
+     * `item_rateio.xml` em componentes e embrulha num ViewHolder.
+     */
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_rateio, parent, false)
         return ViewHolder(view)
     }
 
     /**
-     * Preenche o item na posição [position]: pedido, peso teórico (m³ dedicados e distância) e o
-     * percentual/km de fato rateado pra ele; destaca o fundo em amarelo quando esse é o item que
-     * a tela pediu pra realçar (chegou de um clique numa viagem específica no histórico).
+     * Chamado pelo RecyclerView para preencher a linha da posição [position]:
+     * - pedido e destinatário;
+     * - peso: volume, distância e o peso resultante;
+     * - rateio: o percentual e os km, se já foram calculados; "cancelada", se a viagem foi
+     *   cancelada; ou um aviso de "ainda sem km", se o roteiro não foi encerrado.
+     *
+     * A linha que o gerente tocou no histórico ganha fundo amarelo claro para se destacar.
      */
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = itens[position]
@@ -64,6 +80,6 @@ class ItemRateioAdapter(
         )
     }
 
-    /** Quantidade de itens da lista, exigido pelo RecyclerView pra saber quanto rolar. */
+    /** Quantos itens a tabela tem. O RecyclerView usa isso para saber até onde dá para rolar. */
     override fun getItemCount(): Int = itens.size
 }

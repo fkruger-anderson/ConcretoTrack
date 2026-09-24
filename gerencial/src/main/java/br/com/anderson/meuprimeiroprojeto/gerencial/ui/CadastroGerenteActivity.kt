@@ -14,11 +14,15 @@ import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.CadastroGerente
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.CadastroGerenteUiState
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.CadastroGerenteViewModel
 
-/** Cadastro de outro gerente, feito por um gerente já logado (aba Configurações). */
+/**
+ * A tela de cadastro de outro gerente (nome, email e senha), usada por um gerente que já está
+ * logado. Aberta pela aba Configurações. Quem cadastra continua logado depois.
+ */
 class CadastroGerenteActivity : AppCompatActivity() {
 
     private val viewModel: CadastroGerenteViewModel by viewModels()
 
+    // Componentes da tela, preenchidos no onCreate com findViewById.
     private lateinit var editNome: EditText
     private lateinit var editEmail: EditText
     private lateinit var editSenha: EditText
@@ -26,7 +30,10 @@ class CadastroGerenteActivity : AppCompatActivity() {
     private lateinit var progresso: ProgressBar
     private lateinit var textErro: TextView
 
-    /** Liga os campos da tela, o clique do botão e a observação do estado da ViewModel. */
+    /**
+     * Chamado pelo Android quando a tela é criada: liga os campos, o botão Criar (que entrega os
+     * textos digitados ao ViewModel) e a observação do estado.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_cadastro_gerente)
@@ -45,7 +52,10 @@ class CadastroGerenteActivity : AppCompatActivity() {
         viewModel.estado.observe(this) { estado -> exibirEstado(estado) }
     }
 
-    /** Atualiza progresso, erros de campo, erro geral e fecha a tela com um toast quando o cadastro dá certo. */
+    /**
+     * Desenha o estado atual: rodinha de carregando, erros em cada campo, a mensagem geral de erro
+     * (email já usado, senha fraca...) e, se deu certo, um Toast e o fechamento da tela.
+     */
     private fun exibirEstado(estado: CadastroGerenteUiState) {
         progresso.visibility = if (estado.carregando) View.VISIBLE else View.GONE
         botaoCriar.isEnabled = !estado.carregando

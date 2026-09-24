@@ -17,7 +17,14 @@ import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusPedido
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.PedidosUiState
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.PedidosViewModel
 
-/** Aba "Pedidos": lista com filtro por status + atalho para cadastrar um novo. */
+/**
+ * A aba "Pedidos": a lista de pedidos, com um filtro por situação e um botão para cadastrar um
+ * pedido novo. Tocar num pedido abre o histórico dele.
+ *
+ * Um `Fragment` é um pedaço de tela que vive dentro de uma Activity (aqui, a [MainActivity]). O
+ * `Fragment(R.layout.fragment_pedidos)` no cabeçalho já diz qual layout usar: o Android monta a
+ * tela sozinho e o código só liga os componentes em [onViewCreated].
+ */
 class PedidosFragment : Fragment(R.layout.fragment_pedidos) {
 
     private val viewModel: PedidosViewModel by viewModels()
@@ -29,7 +36,15 @@ class PedidosFragment : Fragment(R.layout.fragment_pedidos) {
     // null = "Todos". A posição no spinner (índice desta lista) decide o filtro aplicado.
     private val opcoesFiltro = listOf(null, StatusPedido.PENDENTE, StatusPedido.EM_ANDAMENTO, StatusPedido.CONCLUIDO)
 
-    /** Liga a RecyclerView, o spinner de filtro e o botão de novo pedido; observa a ViewModel. */
+    /**
+     * Chamado pelo Android logo depois que a tela do fragment foi montada. Liga os componentes:
+     * - a lista (RecyclerView), com itens um embaixo do outro (`LinearLayoutManager`);
+     * - a caixa de seleção do filtro (Spinner). Um `ArrayAdapter` simples transforma a lista de
+     *   textos em opções; quando o gerente escolhe uma, o ViewModel refaz o filtro;
+     * - o botão "Novo pedido", que abre a [NovoPedidoActivity];
+     * - a observação do estado do ViewModel (`viewLifecycleOwner` faz ela parar sozinha quando a
+     *   tela do fragment é destruída).
+     */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -46,7 +61,7 @@ class PedidosFragment : Fragment(R.layout.fragment_pedidos) {
         )
         spinnerFiltro.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, rotulos)
         spinnerFiltro.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            /** Repassa a posição escolhida no spinner como o novo filtro de status. */
+            /** Chamado quando o gerente escolhe uma opção: passa a posição escolhida como novo filtro. */
             override fun onItemSelected(parent: AdapterView<*>?, v: View?, position: Int, id: Long) {
                 viewModel.filtrarPor(opcoesFiltro.getOrNull(position))
             }
@@ -62,14 +77,21 @@ class PedidosFragment : Fragment(R.layout.fragment_pedidos) {
         viewModel.estado.observe(viewLifecycleOwner) { estado -> exibirEstado(estado) }
     }
 
-    /** Recarrega a lista de pedidos toda vez que a tela volta ao primeiro plano. */
+    /**
+     * Chamado pelo Android toda vez que a aba volta a aparecer na frente (inclusive na primeira
+     * vez). Recarrega a lista — assim, ao voltar do cadastro, o pedido novo já aparece.
+     */
     override fun onResume() {
         super.onResume()
         // Recarrega ao voltar do cadastro de pedido, pra mostrar o pedido novo na lista.
         viewModel.carregar()
     }
 
-    /** Reflete o [PedidosUiState] atual: monta o adapter com a lista filtrada e trata lista vazia. */
+    /**
+     * Desenha o estado atual: entrega a lista filtrada ao Adapter (tocar num item abre o
+     * [HistoricoPedidoActivity], levando o número do pedido como "extra" do Intent) e, se a lista
+     * estiver vazia, mostra o aviso de lista vazia ou de erro.
+     */
     private fun exibirEstado(estado: PedidosUiState) {
         recyclerPedidos.adapter = PedidoAdapter(estado.pedidosFiltrados) { item ->
             val intent = Intent(requireContext(), HistoricoPedidoActivity::class.java)

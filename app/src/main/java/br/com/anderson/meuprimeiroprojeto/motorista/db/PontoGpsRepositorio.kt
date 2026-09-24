@@ -6,16 +6,25 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/** Cálculo do km percorrido a partir dos pontos de GPS gravados localmente. */
+/**
+ * Lê os pontos de GPS guardados no celular (Room) e calcula quantos km o caminhão rodou.
+ *
+ * Usa só os pontos locais, então funciona mesmo que eles ainda não tenham subido para o
+ * Firestore. As funções recebem um `Context` porque precisam abrir o banco local.
+ */
 object PontoGpsRepositorio {
 
+    // Raio médio da Terra, em metros. `const val` é uma constante: um valor fixo que nunca muda.
     private const val RAIO_TERRA_METROS = 6_371_000.0
 
     /**
-     * Soma a distância (fórmula de Haversine) entre cada par de pontos consecutivos do roteiro,
-     * usando os pontos já salvos localmente (Room) — não depende de terem sincronizado com o
-     * Firestore. Recalculado sob demanda: com um ponto a cada 10s, mesmo um roteiro de horas tem
-     * no máximo algumas centenas de pontos, então somar tudo de novo é instantâneo.
+     * Soma a distância entre cada ponto e o seguinte, do começo ao fim do roteiro, e devolve o
+     * total em km. É como ligar os pontos com uma régua e somar os pedacinhos.
+     *
+     * Com menos de 2 pontos não há trajeto, então devolve 0.
+     *
+     * A conta é refeita do zero toda vez que é pedida. Isso não pesa: com um ponto a cada 10
+     * segundos, mesmo um roteiro de horas tem só algumas centenas de pontos.
      */
     suspend fun calcularKmPercorridos(context: Context, roteiroId: String): Double {
         val pontos = AppDatabase.obter(context).pontoGpsDao().buscarPorRoteiro(roteiroId)
@@ -31,12 +40,19 @@ object PontoGpsRepositorio {
         return totalMetros / 1000.0
     }
 
-    /** Pontos de GPS do roteiro em ordem, pra desenhar o trajeto no mapa. */
+    /** Devolve os pontos de GPS do roteiro, em ordem de horário, para desenhar o trajeto no mapa. */
     suspend fun buscarPontos(context: Context, roteiroId: String): List<PontoGps> {
         return AppDatabase.obter(context).pontoGpsDao().buscarPorRoteiro(roteiroId)
     }
 
-    /** Distância em linha reta entre duas coordenadas na superfície da Terra (fórmula de Haversine). */
+    /**
+     * Distância em metros entre duas coordenadas, pela "fórmula de Haversine".
+     *
+     * Como a Terra é redonda, não dá para usar a régua reta de um mapa plano. Esta fórmula calcula
+     * a distância andando por cima da superfície de uma esfera. Os ângulos precisam estar em
+     * radianos (por isso o `Math.toRadians`). O resultado é "em linha reta" entre os dois pontos,
+     * e não pelas ruas; como os pontos são lidos a cada 10 segundos, a diferença é pequena.
+     */
     private fun distanciaEmMetros(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
         val dLat = Math.toRadians(lat2 - lat1)
         val dLon = Math.toRadians(lon2 - lon1)

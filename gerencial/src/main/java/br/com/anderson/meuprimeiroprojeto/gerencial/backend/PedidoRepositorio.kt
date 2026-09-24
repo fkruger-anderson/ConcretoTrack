@@ -1,20 +1,30 @@
 package br.com.anderson.meuprimeiroprojeto.gerencial.backend
 
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.PedidoComStatus
+import br.com.anderson.meuprimeiroprojeto.gerencial.dados.SaldoPedido
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusPedido
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 
-/** Cadastro e consulta de pedidos, e cálculo do status (pendente/em andamento/concluído) a partir das viagens. */
+/**
+ * Cadastra e consulta pedidos no Firestore (coleção `pedidos`) e calcula a situação de cada um.
+ *
+ * A situação do pedido (pendente, em andamento, concluído) NÃO é gravada no banco: ela é
+ * calculada na hora, a partir dos m³ reservados e das viagens (ver [calcularStatus]). Assim ela
+ * nunca fica desatualizada.
+ *
+ * É um `object`: só existe uma cópia, usada direto pelo nome.
+ */
 object PedidoRepositorio {
 
     private val db get() = Firebase.firestore
 
     /**
-     * Lista todos os pedidos já com o status calculado (não gravado — ver [StatusPedido]),
-     * ordenados pela data de entrega (mais antiga primeiro), para o gerente priorizar as
-     * entregas mais urgentes. Quando o saldo está zerado, ainda é preciso checar se há viagem
-     * atribuída/em rota pendente para decidir entre "em andamento" e "concluído".
+     * Lista todos os pedidos, cada um já com a situação calculada, em ordem de data de entrega (a
+     * mais próxima primeiro), para o gerente ver primeiro o que é mais urgente.
+     *
+     * Para decidir entre "em andamento" e "concluído", às vezes é preciso saber se o pedido ainda
+     * tem viagem pendente; isso é uma consulta extra ao Firestore ([temViagemPendente]).
      */
     suspend fun listarComStatus(): List<PedidoComStatus> {
         val snapshot = db.collection("pedidos").get().aguardar()
@@ -33,35 +43,52 @@ object PedidoRepositorio {
     }
 
     /**
-     * Regra de [StatusPedido]: pendente (nada alocado), em andamento (há saldo ou viagem
-     * atribuída/em rota pendente), concluído (saldo zero e nenhuma viagem pendente). Extraído
-     * à parte pra telas que já têm a lista de viagens em mãos (ex.: histórico do pedido) não
-     * precisarem de outra consulta ao Firestore só pra saber se há viagem pendente.
+     * A regra da situação do pedido (ver [StatusPedido]):
+     * - PENDENTE: nada foi reservado ainda;
+     * - EM_ANDAMENTO: ainda sobra saldo, ou tudo foi reservado mas há viagem atribuída/em rota;
+     * - CONCLUIDO: saldo zero e nenhuma viagem pendente.
+     *
+     * As contas usam [SaldoPedido], que arredonda para o litro. Sem isso, "sobrinhas" de
+     * arredondamento do computador (0,7 + 0,1 + 0,1 + 0,1 = 0,9999999999999999) deixavam o pedido
+     * em andamento para sempre.
+     *
+     * É uma "função pura": só faz contas com o que recebe, sem acessar banco nem internet. Por
+     * isso fica separada: telas que já têm a lista de viagens em mãos (como o histórico do pedido)
+     * usam esta função sem fazer outra consulta. E funções puras são as mais fáceis de testar.
      */
     fun calcularStatus(m3Alocados: Double, quantidadeTotalM3: Double, temViagemPendente: Boolean): StatusPedido {
-        val saldo = quantidadeTotalM3 - m3Alocados
+        val saldo = SaldoPedido.calcular(quantidadeTotalM3, m3Alocados)
         return when {
-            m3Alocados <= 0.0 -> StatusPedido.PENDENTE
+            SaldoPedido.arredondar(m3Alocados) <= 0.0 -> StatusPedido.PENDENTE
             saldo > 0.0 -> StatusPedido.EM_ANDAMENTO
             temViagemPendente -> StatusPedido.EM_ANDAMENTO
             else -> StatusPedido.CONCLUIDO
         }
     }
 
-    /** Busca um pedido específico pelo número (id), usado na tela de atribuir viagem. */
+    /** Busca um pedido pelo número; devolve `null` se não existir. */
     suspend fun buscarPorId(id: Int): PedidoRemoto? {
         val documento = db.collection("pedidos").document(id.toString()).get().aguardar()
         return documento.toObject(PedidoRemoto::class.java)
     }
 
-    /** Corrige a data de entrega de um pedido já cadastrado, sem mexer em mais nada dele. */
+    /**
+     * Troca a data de entrega de um pedido já cadastrado. O `update` muda só esse campo; o resto do
+     * pedido fica como estava.
+     */
     suspend fun atualizarDataEntrega(pedidoId: Int, novaData: Long) {
         db.collection("pedidos").document(pedidoId.toString())
             .update("dataEntrega", novaData)
             .aguardar()
     }
 
-    /** Só é chamado quando o saldo já está zerado, pra decidir entre "em andamento" e "concluído". */
+    /**
+     * Diz se o pedido tem alguma viagem ainda não resolvida (ATRIBUIDA ou EM_ROTA). Basta achar uma,
+     * por isso o `limit(1)`: o Firestore para de procurar na primeira que encontrar.
+     *
+     * Observação: hoje esta função é chamada para TODOS os pedidos em [listarComStatus] (uma
+     * consulta a mais por pedido), mesmo quando a resposta não muda a situação.
+     */
     private suspend fun temViagemPendente(pedidoId: Int): Boolean {
         val snapshot = db.collection("viagens")
             .whereEqualTo("pedidoId", pedidoId)
@@ -73,9 +100,16 @@ object PedidoRepositorio {
     }
 
     /**
-     * Cria o pedido com um número sequencial, usando um contador em `contadores/pedidos`
-     * numa transação (evita dois gerentes cadastrando ao mesmo tempo e gerando o mesmo número).
-     * Começa em 4 porque os pedidos 1-3 já existem, semeados pelo app do motorista (etapa 3).
+     * Cadastra um pedido novo e devolve o número que ele recebeu.
+     *
+     * Os números são sequenciais (4, 5, 6...). Para isso existe um "contador" no documento
+     * `contadores/pedidos`, com o último número usado. Tudo acontece numa transação: o Firestore lê
+     * o contador, soma 1, grava o contador e o pedido novo juntos — e, se outro gerente estiver
+     * cadastrando no mesmo instante, um dos dois repete a operação. Assim nunca saem dois pedidos
+     * com o mesmo número.
+     *
+     * O contador começa em 3 (o primeiro pedido novo é o 4) porque os pedidos 1 a 3 já existiam,
+     * criados pelo app do motorista na etapa 3 do projeto.
      */
     suspend fun cadastrar(
         destinatarioNome: String,

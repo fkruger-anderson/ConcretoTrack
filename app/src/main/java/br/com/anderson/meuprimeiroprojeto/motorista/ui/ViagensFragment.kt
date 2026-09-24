@@ -15,18 +15,33 @@ import br.com.anderson.meuprimeiroprojeto.motorista.sessao.SessaoMotorista
 import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.ViagensAbertasUiState
 import br.com.anderson.meuprimeiroprojeto.motorista.ui.viewmodel.ViagensAbertasViewModel
 
-/** Aba "Viagens": lista das viagens do motorista que ainda não entraram em nenhum roteiro. */
+/**
+ * A aba "Viagens": a lista das viagens do motorista que ainda não foram colocadas em nenhum
+ * roteiro. Tocar numa viagem abre a tela de detalhes, onde ela pode ser adicionada ao roteiro.
+ *
+ * Um `Fragment` é um pedaço de tela que vive dentro de uma Activity (aqui, dentro da
+ * [MotoristaHomeActivity]). O `Fragment(R.layout.fragment_viagens)` no cabeçalho da classe já diz
+ * qual layout XML usar: o Android monta ("infla") a tela sozinho, e o código só precisa ligar os
+ * componentes em [onViewCreated].
+ */
 class ViagensFragment : Fragment(R.layout.fragment_viagens) {
 
+    // O ViewModel desta aba; sobrevive quando o celular gira.
     private val viewModel: ViagensAbertasViewModel by viewModels()
 
     private lateinit var recyclerViagens: RecyclerView
     private lateinit var textListaVazia: TextView
 
     /**
-     * Liga as views do layout inflado, mostra a saudação com o nome em cache
-     * ([SessaoMotorista]), configura o botão de sair (encerra a sessão do Firebase Auth e limpa o
-     * cache local) e começa a observar o estado da ViewModel.
+     * Chamado pelo Android logo depois que a tela do fragment foi montada. É o lugar para ligar os
+     * componentes:
+     * - mostra "Olá, <nome>" usando o nome guardado no celular ([SessaoMotorista]);
+     * - configura o botão Sair: faz logout no Firebase, apaga o nome guardado, abre o login e fecha
+     *   a tela atual;
+     * - prepara a lista (RecyclerView). O `LinearLayoutManager` diz que os itens ficam um embaixo
+     *   do outro;
+     * - começa a observar o estado do ViewModel. `viewLifecycleOwner` faz a observação parar
+     *   sozinha quando a tela do fragment for destruída.
      */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -48,7 +63,11 @@ class ViagensFragment : Fragment(R.layout.fragment_viagens) {
         viewModel.estado.observe(viewLifecycleOwner) { estado -> exibirEstado(estado) }
     }
 
-    /** Recarrega a lista sempre que a aba volta a ficar visível (ex.: após voltar da tela de detalhes). */
+    /**
+     * Chamado pelo Android toda vez que a aba volta a aparecer na frente (inclusive na primeira
+     * vez). Pede ao ViewModel para recarregar a lista — assim, ao voltar da tela de detalhes, uma
+     * viagem que foi para o roteiro já some daqui.
+     */
     override fun onResume() {
         super.onResume()
         val uid = AutenticacaoRepositorio.usuarioAtual?.uid ?: return
@@ -56,8 +75,10 @@ class ViagensFragment : Fragment(R.layout.fragment_viagens) {
     }
 
     /**
-     * Mostra a lista de viagens em aberto (ou a mensagem de lista vazia/erro) e liga o adapter
-     * que abre [DetalhesViagemActivity] ao tocar num item.
+     * Desenha o estado atual: se deu erro, mostra a mensagem de erro no lugar da lista. Senão,
+     * entrega a lista ao Adapter (que desenha cada item) e, se ela estiver vazia, mostra o aviso de
+     * "nenhuma viagem". Tocar num item abre a [DetalhesViagemActivity], levando o id da viagem como
+     * "extra" do Intent.
      */
     private fun exibirEstado(estado: ViagensAbertasUiState) {
         if (estado.erroAoCarregar) {
@@ -78,7 +99,10 @@ class ViagensFragment : Fragment(R.layout.fragment_viagens) {
         }
     }
 
-    /** Solta o adapter da lista; a view do fragment está sendo destruída. */
+    /**
+     * Chamado pelo Android quando a tela do fragment vai ser destruída (por exemplo, ao trocar de
+     * aba). Solta o Adapter da lista para não segurar memória à toa.
+     */
     override fun onDestroyView() {
         super.onDestroyView()
         recyclerViagens.adapter = null

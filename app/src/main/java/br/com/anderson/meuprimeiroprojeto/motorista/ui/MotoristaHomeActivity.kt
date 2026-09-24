@@ -6,13 +6,23 @@ import androidx.fragment.app.Fragment
 import br.com.anderson.meuprimeiroprojeto.R
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
-/** Tela inicial do motorista: menu inferior com Viagens e Roteiro. */
+/**
+ * A tela inicial do motorista, com um menu na parte de baixo (Viagens e Roteiro).
+ *
+ * Esta Activity é só a "moldura": o conteúdo de cada aba é um `Fragment` (um pedaço de tela
+ * reaproveitável) que é trocado dentro de um espaço reservado no layout (`containerFragmento`).
+ * A aba Viagens é o [ViagensFragment] e a aba Roteiro é o [RoteiroFragment].
+ */
 class MotoristaHomeActivity : AppCompatActivity() {
 
     /**
-     * Mostra o fragmento de Viagens ao abrir e liga a navegação inferior. O `savedInstanceState`
-     * evita trocar o fragmento de novo numa recriação (ex.: giro de tela) — o FragmentManager já
-     * restaura sozinho o que estava sendo exibido.
+     * Chamado pelo Android quando a tela é criada.
+     *
+     * Mostra a aba Viagens na primeira abertura e liga o menu de baixo para trocar de aba.
+     *
+     * O `savedInstanceState` vem preenchido quando a tela está sendo RECRIADA (por exemplo, depois
+     * de girar o celular). Nesse caso o Android já restaura sozinho a aba que estava aberta, então
+     * não se coloca a aba Viagens de novo por cima.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,7 +47,11 @@ class MotoristaHomeActivity : AppCompatActivity() {
         }
     }
 
-    /** Troca o fragmento exibido no container, usado pelos itens do menu inferior. */
+    /**
+     * Troca o conteúdo do espaço reservado pelo fragment recebido. O `supportFragmentManager` é
+     * quem cuida dos fragments da tela; `replace` tira o que estava lá e coloca o novo, e `commit`
+     * confirma a troca.
+     */
     private fun mostrarFragmento(fragmento: Fragment) {
         supportFragmentManager.beginTransaction()
             .replace(R.id.containerFragmento, fragmento)

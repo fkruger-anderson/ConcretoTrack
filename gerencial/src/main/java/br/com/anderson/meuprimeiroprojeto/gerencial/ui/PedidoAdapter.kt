@@ -14,15 +14,25 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Adapter da lista de pedidos (aba "Pedidos"). Recebe a lista já filtrada e pronta da ViewModel
- * e só cuida de desenhar cada item e avisar o clique — nada de acessar repositório aqui.
+ * O "Adapter" da lista da aba Pedidos.
+ *
+ * O RecyclerView (a lista rolável) não sabe nada sobre pedidos: ele só rola e reaproveita linhas.
+ * O Adapter é o intermediário que diz quantos itens existem e como preencher cada linha.
+ * "Reaproveitar" quer dizer que o RecyclerView cria só as linhas que cabem na tela e, ao rolar,
+ * reusa as que saíram para mostrar os itens que entram — economizando memória.
+ *
+ * Este Adapter recebe a lista já filtrada do ViewModel e a função [aoClicar]. Ele só desenha e
+ * avisa o toque; não busca dados em lugar nenhum.
  */
 class PedidoAdapter(
     private val itens: List<PedidoComStatus>,
     private val aoClicar: (PedidoComStatus) -> Unit
 ) : RecyclerView.Adapter<PedidoAdapter.ViewHolder>() {
 
-    /** Referências das Views de um item da lista, encontradas uma única vez (evita findViewById repetido). */
+    /**
+     * O "ViewHolder" guarda os componentes de uma linha, encontrados uma única vez com
+     * `findViewById`. Quando a linha é reaproveitada, eles já estão à mão, e a rolagem fica suave.
+     */
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val textNumero: TextView = view.findViewById(R.id.textNumero)
         val textStatus: TextView = view.findViewById(R.id.textStatus)
@@ -30,15 +40,22 @@ class PedidoAdapter(
         val textDataEntrega: TextView = view.findViewById(R.id.textDataEntrega)
     }
 
+    // Formato de data, por exemplo "21/09/2026".
     private val formatoData = SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR"))
 
-    /** Infla o layout de um item da lista de pedidos. */
+    /**
+     * Chamado pelo RecyclerView quando precisa de uma linha nova: transforma ("infla") o layout
+     * `item_pedido.xml` em componentes e embrulha num ViewHolder.
+     */
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_pedido, parent, false)
         return ViewHolder(view)
     }
 
-    /** Preenche o item na posição [position] com número, status e progresso (m³) do pedido. */
+    /**
+     * Chamado pelo RecyclerView para preencher uma linha com o pedido da posição [position]: número
+     * e destinatário, situação, progresso em m³ (reservado / total / saldo) e data de entrega.
+     */
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = itens[position]
         val contexto = holder.itemView.context
@@ -65,6 +82,6 @@ class PedidoAdapter(
         holder.itemView.setOnClickListener { aoClicar(item) }
     }
 
-    /** Quantidade de itens da lista, exigido pelo RecyclerView pra saber quanto rolar. */
+    /** Quantos itens a lista tem. O RecyclerView usa isso para saber até onde dá para rolar. */
     override fun getItemCount(): Int = itens.size
 }

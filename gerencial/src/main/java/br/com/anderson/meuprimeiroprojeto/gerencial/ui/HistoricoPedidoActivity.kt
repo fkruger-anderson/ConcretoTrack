@@ -26,15 +26,22 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-/** Histórico de viagens de um pedido: quem levou, quanto, quando, e como terminou. */
+/**
+ * A tela de histórico de um pedido: o progresso (m³ reservados, total e saldo), o total de km, a
+ * data de entrega e a lista de viagens — quem levou, quanto, quando e como terminou.
+ *
+ * Nesta tela o gerente pode: trocar a data de entrega, atribuir uma viagem nova (se ainda houver
+ * saldo), cancelar uma viagem e abrir o detalhe do roteiro de uma viagem.
+ */
 class HistoricoPedidoActivity : AppCompatActivity() {
 
     companion object {
-        /** Chave do Intent extra: id do pedido cujo histórico está sendo mostrado. */
+        /** Nome do "extra" do Intent que leva o número do pedido a mostrar. */
         const val EXTRA_PEDIDO_ID = "pedido_id"
     }
 
     private val viewModel: HistoricoPedidoViewModel by viewModels()
+    // Formato de data, por exemplo "21/09/2026".
     private val formatoData = SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR"))
 
     private var pedidoId: Int = -1
@@ -46,7 +53,11 @@ class HistoricoPedidoActivity : AppCompatActivity() {
     private lateinit var textListaVazia: TextView
     private lateinit var recyclerViagens: RecyclerView
 
-    /** Lê o pedido recebido por Intent, liga as Views e o botão de atribuir nova viagem. */
+    /**
+     * Chamado pelo Android quando a tela é criada. Lê o número do pedido que veio no Intent (sem
+     * ele a tela fecha), liga os componentes e os botões, e começa a observar o ViewModel. Os dados
+     * em si são carregados no [onResume].
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_historico_pedido)
@@ -76,7 +87,10 @@ class HistoricoPedidoActivity : AppCompatActivity() {
         viewModel.estado.observe(this) { estado -> exibirEstado(estado) }
     }
 
-    /** Recarrega o pedido e as viagens toda vez que a tela volta ao primeiro plano. */
+    /**
+     * Chamado pelo Android toda vez que a tela volta a aparecer na frente (inclusive na primeira
+     * vez). Recarrega o pedido e as viagens.
+     */
     override fun onResume() {
         super.onResume()
         // Também cobre a primeira exibição (onResume sempre roda logo após onCreate) e
@@ -84,7 +98,11 @@ class HistoricoPedidoActivity : AppCompatActivity() {
         viewModel.carregar(pedidoId)
     }
 
-    /** Reflete o [HistoricoPedidoUiState] atual: progresso do pedido, lista de viagens e toasts. */
+    /**
+     * Desenha o estado atual: cabeçalho do pedido, botão da data (desligado se o pedido já foi
+     * concluído), botão de atribuir (só aparece se ainda há saldo), a lista de viagens e os avisos
+     * (Toasts) de resultado do cancelamento ou de erro ao trocar a data.
+     */
     private fun exibirEstado(estado: HistoricoPedidoUiState) {
         if (estado.pedidoNaoEncontrado) {
             finish()
@@ -144,7 +162,10 @@ class HistoricoPedidoActivity : AppCompatActivity() {
         }
     }
 
-    /** Abre o calendário do Android já na data atual do pedido, e salva a escolha ao confirmar. */
+    /**
+     * Abre o calendário do Android já na data de entrega atual do pedido. Quando o gerente escolhe
+     * um dia, pede ao ViewModel para gravar a data nova (à meia-noite daquele dia).
+     */
     private fun abrirSeletorDeDataEntrega() {
         val calendario = Calendar.getInstance().apply {
             timeInMillis = viewModel.estado.value?.dataEntrega ?: timeInMillis
@@ -165,7 +186,11 @@ class HistoricoPedidoActivity : AppCompatActivity() {
         ).show()
     }
 
-    /** Pede o motivo do cancelamento num diálogo e só chama a ViewModel se o motivo não for vazio. */
+    /**
+     * Abre uma caixa de confirmação (`AlertDialog`) para cancelar a viagem, com um campo para o
+     * motivo. O motivo é obrigatório: se o gerente confirmar com o campo vazio, aparece um aviso e
+     * nada é cancelado. Com motivo, pede ao ViewModel para cancelar.
+     */
     private fun confirmarCancelamento(viagemId: String, viagem: ViagemRemota) {
         val editMotivo = EditText(this).apply { hint = getString(R.string.cancelar_viagem_hint_motivo) }
 

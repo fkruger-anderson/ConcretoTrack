@@ -14,11 +14,20 @@ import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.LoginErro
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.LoginUiState
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.LoginViewModel
 
-/** Tela de login do gerente; se já tem sessão salva no Firebase Auth, pula direto pra Home. */
+/**
+ * A tela de login do gerente (a primeira que abre no app gerencial).
+ *
+ * Uma `Activity` é uma tela do app. Ela só cuida da parte visual; a lógica fica no
+ * [LoginViewModel]. Se o gerente já estiver logado (o Firebase lembra), a tela pula direto para a
+ * tela inicial.
+ */
 class LoginActivity : AppCompatActivity() {
 
+    // `by viewModels()` pede ao Android o ViewModel desta tela; ao girar o celular, o Android
+    // devolve o MESMO ViewModel, com os dados preservados.
     private val viewModel: LoginViewModel by viewModels()
 
+    // Componentes da tela. `lateinit` = serão preenchidos no onCreate, com findViewById.
     private lateinit var editEmail: EditText
     private lateinit var editSenha: EditText
     private lateinit var botaoEntrar: Button
@@ -26,8 +35,11 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var textErro: TextView
 
     /**
-     * Antes de montar a tela, verifica se já existe sessão ativa — se sim, vai direto pra Home
-     * sem nem inflar o layout de login.
+     * Chamado pelo Android quando a tela é criada.
+     *
+     * Primeiro vê se já há alguém logado; se sim, abre a tela inicial sem nem montar o login. Senão,
+     * carrega o layout XML, encontra os componentes pelo id, liga o botão Entrar e começa a observar
+     * o estado do ViewModel (toda mudança chama [exibirEstado]).
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,7 +64,10 @@ class LoginActivity : AppCompatActivity() {
         viewModel.estado.observe(this) { estado -> exibirEstado(estado) }
     }
 
-    /** Atualiza progresso e mensagem de erro, e abre a Home quando o login dá certo. */
+    /**
+     * Desenha o estado atual: rodinha de carregando (e botão desligado) durante o login, a mensagem
+     * de erro certa (textos do `strings.xml`) e, se deu certo, abre a tela inicial.
+     */
     private fun exibirEstado(estado: LoginUiState) {
         progresso.visibility = if (estado.carregando) View.VISIBLE else View.GONE
         botaoEntrar.isEnabled = !estado.carregando
@@ -69,7 +84,10 @@ class LoginActivity : AppCompatActivity() {
         estado.sucesso?.getConteudoSeNaoTratado()?.let { abrirHome() }
     }
 
-    /** Abre a MainActivity e encerra a tela de login (não deve voltar pra ela com o botão "voltar"). */
+    /**
+     * Abre a [MainActivity] com um `Intent` e fecha o login com `finish()`, para o botão "voltar"
+     * não retornar ao login.
+     */
     private fun abrirHome() {
         startActivity(Intent(this, MainActivity::class.java))
         finish()

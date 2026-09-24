@@ -11,12 +11,24 @@ import br.com.anderson.meuprimeiroprojeto.gerencial.R
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.AutenticacaoRepositorio
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.ConfiguracoesViewModel
 
-/** Aba "Configurações": cadastro de motoristas/caminhões e sair. */
+/**
+ * A aba "Configurações": saudação com o nome do gerente, botões para cadastrar motoristas,
+ * caminhões e outros gerentes, e o botão Sair.
+ *
+ * Um `Fragment` é um pedaço de tela dentro da [MainActivity]; o layout é indicado no cabeçalho da
+ * classe e montado pelo Android.
+ */
 class ConfiguracoesFragment : Fragment(R.layout.fragment_configuracoes) {
 
     private val viewModel: ConfiguracoesViewModel by viewModels()
 
-    /** Mostra a saudação com o nome do gerente e liga os botões de cadastro e de sair. */
+    /**
+     * Chamado pelo Android logo depois que a tela do fragment foi montada.
+     *
+     * Observa o ViewModel para mostrar "Olá, <nome>", pede para ele buscar o nome, e liga os botões:
+     * cada botão de cadastro abre a tela correspondente com um `Intent`; o Sair faz o logout, abre o
+     * login e fecha a tela atual (`requireActivity().finish()`).
+     */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 

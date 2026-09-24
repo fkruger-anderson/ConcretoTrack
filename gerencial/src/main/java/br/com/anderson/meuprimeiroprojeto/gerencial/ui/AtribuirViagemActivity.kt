@@ -19,16 +19,23 @@ import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.AtribuirErro
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.AtribuirViagemUiState
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.AtribuirViagemViewModel
 
-/** O gerente já chega aqui com o pedido escolhido; só falta motorista, caminhão e quantidade. */
+/**
+ * A tela de atribuir uma viagem. O gerente chega aqui a partir do histórico de um pedido (o pedido
+ * já vem escolhido); falta escolher o motorista, o caminhão e a quantidade em m³.
+ *
+ * Os motoristas e caminhões aparecem em caixas de seleção (`Spinner`, a listinha que abre ao
+ * tocar).
+ */
 class AtribuirViagemActivity : AppCompatActivity() {
 
     companion object {
-        /** Chave do Intent extra: id do pedido que está recebendo a nova viagem. */
+        /** Nome do "extra" do Intent que leva o número do pedido que vai receber a viagem. */
         const val EXTRA_PEDIDO_ID = "pedido_id"
     }
 
     private val viewModel: AtribuirViagemViewModel by viewModels()
 
+    // -1 = "ainda não lido"; o valor verdadeiro vem do Intent no onCreate.
     private var pedidoId: Int = -1
     private lateinit var textPedido: TextView
     private lateinit var spinnerMotorista: Spinner
@@ -39,7 +46,11 @@ class AtribuirViagemActivity : AppCompatActivity() {
     private lateinit var textErro: TextView
     private lateinit var textSemDados: TextView
 
-    /** Lê o pedido recebido por Intent, liga as Views e manda a ViewModel carregar os dados. */
+    /**
+     * Chamado pelo Android quando a tela é criada. Lê o número do pedido que veio no Intent (sem ele
+     * a tela fecha), liga os componentes e o botão Atribuir, começa a observar o ViewModel e pede
+     * para ele carregar o pedido e as listas.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_atribuir_viagem)
@@ -65,7 +76,14 @@ class AtribuirViagemActivity : AppCompatActivity() {
         viewModel.carregar(pedidoId)
     }
 
-    /** Reflete o [AtribuirViagemUiState] atual nas Views: textos, spinners, erros e sucesso. */
+    /**
+     * Desenha o estado atual:
+     * - pedido não encontrado: fecha a tela;
+     * - cabeçalho com número, destinatário e saldo;
+     * - sem motorista ou caminhão cadastrado: mostra um aviso e desliga o botão; senão, preenche as
+     *   caixas de seleção (um `ArrayAdapter` simples, que usa o `toString()` de cada item);
+     * - erros de quantidade ou do servidor, e o Toast de sucesso (que também fecha a tela).
+     */
     private fun exibirEstado(estado: AtribuirViagemUiState) {
         if (estado.pedidoNaoEncontrado) {
             finish()
@@ -105,7 +123,11 @@ class AtribuirViagemActivity : AppCompatActivity() {
         }
     }
 
-    /** Lê motorista, caminhão e quantidade escolhidos e pede pra ViewModel tentar atribuir. */
+    /**
+     * Executado ao tocar em Atribuir: pega o motorista e o caminhão escolhidos e o texto da
+     * quantidade, e entrega ao ViewModel. O `as?` tenta converter o item escolhido para o tipo
+     * certo; se não der (nada escolhido), a função simplesmente para (`?: return`).
+     */
     private fun tentarAtribuir() {
         val motorista = spinnerMotorista.selectedItem as? MotoristaComId ?: return
         val caminhao = spinnerCaminhao.selectedItem as? Caminhao ?: return

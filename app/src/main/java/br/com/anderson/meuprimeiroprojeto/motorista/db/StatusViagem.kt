@@ -1,17 +1,21 @@
 package br.com.anderson.meuprimeiroprojeto.motorista.db
 
 /**
- * Situação de uma viagem, espelhando o campo `status` do documento no Firestore.
- * Quem cancela é o gerente, pelo app gerencial (`ViagemRepositorio.cancelar`) — o app do
- * motorista só lê o status CANCELADA quando isso acontece (ex.: enquanto está em rota).
+ * As situações possíveis de uma viagem.
+ *
+ * `enum class` é uma lista fechada de opções. No Firestore a situação é gravada como texto, usando
+ * o nome da opção (`StatusViagem.EM_ROTA.name` é o texto "EM_ROTA").
+ *
+ * Quem cancela uma viagem é sempre o gerente, pelo app gerencial (`ViagemRepositorio.cancelar`).
+ * Este app só "percebe" o cancelamento quando lê a viagem de novo.
  */
 enum class StatusViagem {
-    /** Criada pelo gerente, com m³ já reservado do saldo do pedido, aguardando o motorista iniciar. */
+    /** Criada pelo gerente, com os m³ já reservados do pedido, esperando o motorista sair. */
     ATRIBUIDA,
-    /** Motorista iniciou o trânsito; GPS ativo. */
+    /** O roteiro que contém esta viagem foi iniciado: o caminhão está a caminho. */
     EM_ROTA,
-    /** Viagem finalizada pelo motorista no destino. */
+    /** O motorista marcou a entrega como feita. */
     CONCLUIDA,
-    /** Cancelada (com motivo); devolve os m³ reservados ao saldo do pedido. */
+    /** O gerente cancelou (informando um motivo); os m³ voltam para o saldo do pedido. */
     CANCELADA
 }

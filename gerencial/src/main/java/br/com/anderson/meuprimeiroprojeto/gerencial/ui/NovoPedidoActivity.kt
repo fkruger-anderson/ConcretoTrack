@@ -24,12 +24,19 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-/** Cadastro de um novo pedido: dados do destinatário (documento, nome, endereço) e a quantidade total em m³. */
+/**
+ * A tela de cadastro de um pedido novo: dados do destinatário (CPF/CNPJ, nome, endereço), a
+ * quantidade total em m³, a distância da obra e a data de entrega.
+ *
+ * A tela só junta o que foi digitado e entrega ao [NovoPedidoViewModel], que confere e salva.
+ */
 class NovoPedidoActivity : AppCompatActivity() {
 
     private val viewModel: NovoPedidoViewModel by viewModels()
+    // Formato de data, por exemplo "21/09/2026".
     private val formatoData = SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR"))
 
+    // Componentes da tela, preenchidos no onCreate com findViewById.
     private lateinit var editDocumento: EditText
     private lateinit var editNome: EditText
     private lateinit var editCep: EditText
@@ -49,10 +56,21 @@ class NovoPedidoActivity : AppCompatActivity() {
     private var dataEntregaSelecionada: Long? = null
 
     companion object {
+        // Nome usado para guardar a data escolhida no Bundle quando a tela é recriada.
         private const val CHAVE_DATA_ENTREGA = "data_entrega_selecionada"
     }
 
-    /** Liga as Views, o autocompletar de UF, a máscara de CPF/CNPJ e os botões de data/salvar. */
+    /**
+     * Chamado pelo Android quando a tela é criada. Liga os componentes e:
+     * - recupera a data de entrega escolhida, se a tela está sendo recriada (ver [onSaveInstanceState]);
+     * - liga as sugestões do campo UF (`AutoCompleteTextView` + a lista de [Uf]);
+     * - liga a máscara de CPF/CNPJ no campo documento ([MascaraDocumento]);
+     * - liga o botão da data (abre o calendário) e o botão Salvar (entrega tudo ao ViewModel);
+     * - começa a observar o estado do ViewModel.
+     *
+     * Os textos digitados nos campos não precisam de cuidado ao girar o celular: o Android já guarda
+     * e devolve sozinho o conteúdo de campos de texto que têm id.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_novo_pedido)
@@ -99,13 +117,24 @@ class NovoPedidoActivity : AppCompatActivity() {
         viewModel.estado.observe(this) { estado -> exibirEstado(estado) }
     }
 
-    /** Salva a data de entrega escolhida para sobreviver à rotação de tela. */
+    /**
+     * Chamado pelo Android antes de destruir a tela para recriá-la (por exemplo, ao girar o
+     * celular). O `Bundle` é uma "mochila" onde se guardam valores simples para recuperar depois, no
+     * [onCreate]. A data escolhida não está em nenhum campo de texto, então o Android não a guarda
+     * sozinho — por isso ela é colocada na mochila aqui.
+     */
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         dataEntregaSelecionada?.let { outState.putLong(CHAVE_DATA_ENTREGA, it) }
     }
 
-    /** Abre o calendário do Android; ao escolher, guarda o timestamp e atualiza o texto do botão. */
+    /**
+     * Abre o calendário do Android (`DatePickerDialog`), já na data escolhida antes, se houver.
+     * Quando o gerente escolhe um dia, guarda a data (à meia-noite daquele dia) e mostra no botão.
+     *
+     * `Calendar` é a classe do Java para trabalhar com datas; atenção que nela os meses começam em
+     * 0 (janeiro = 0).
+     */
     private fun abrirSeletorDeDataEntrega() {
         val calendario = Calendar.getInstance()
         dataEntregaSelecionada?.let { calendario.timeInMillis = it }
@@ -126,7 +155,11 @@ class NovoPedidoActivity : AppCompatActivity() {
         ).show()
     }
 
-    /** Reflete o [NovoPedidoUiState] atual: progresso do salvamento, erros e sucesso. */
+    /**
+     * Desenha o estado atual: rodinha de carregando, marca em vermelho os campos com erro (com o
+     * texto do `strings.xml`), mostra a mensagem geral de erro e, se deu certo, mostra o número do
+     * pedido criado num Toast e fecha a tela.
+     */
     private fun exibirEstado(estado: NovoPedidoUiState) {
         progresso.visibility = if (estado.carregando) View.VISIBLE else View.GONE
         botaoSalvar.isEnabled = !estado.carregando
@@ -151,15 +184,25 @@ class NovoPedidoActivity : AppCompatActivity() {
         }
     }
 
-    /** Reformata como CPF ou CNPJ enquanto o gerente digita, conforme a quantidade de dígitos. */
+    /**
+     * Coloca a máscara de CPF ou CNPJ enquanto o gerente digita (conforme a quantidade de números).
+     *
+     * Um `TextWatcher` é um "vigia" do campo de texto: o Android chama as funções dele antes,
+     * durante e depois de cada mudança no texto. `private class` dentro da Activity quer dizer que só
+     * esta tela usa esta classe.
+     */
     private class MascaraDocumento(private val campo: EditText) : TextWatcher {
+        // Evita que a própria troca de texto feita aqui dispare o vigia de novo (um laço sem fim).
         private var atualizandoTexto = false
 
         // Sem uso aqui: só precisamos reagir depois que o texto já mudou (afterTextChanged).
         override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
         override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
 
-        /** Reformata o texto digitado; usa [atualizandoTexto] pra não entrar em loop consigo mesmo. */
+        /**
+         * Chamado depois de cada mudança no texto. Refaz a máscara e, se o texto mudou, troca o
+         * conteúdo do campo e coloca o cursor no fim.
+         */
         override fun afterTextChanged(s: Editable?) {
             if (atualizandoTexto || s == null) return
             val formatado = DocumentoUtils.formatar(s.toString())

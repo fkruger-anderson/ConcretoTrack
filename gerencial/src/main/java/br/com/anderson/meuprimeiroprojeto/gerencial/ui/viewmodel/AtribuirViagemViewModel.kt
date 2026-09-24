@@ -11,47 +11,75 @@ import br.com.anderson.meuprimeiroprojeto.gerencial.backend.MotoristaRepositorio
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.PedidoRepositorio
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.ViagemRepositorio
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.Caminhao
+import br.com.anderson.meuprimeiroprojeto.gerencial.dados.SaldoPedido
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
-/** Os jeitos de dar errado ao atribuir — a Activity escolhe o texto certo pra cada um. */
+/** Os tipos de erro ao atribuir uma viagem. A tela escolhe o texto certo para cada um. */
 enum class AtribuirErro { SALDO_INSUFICIENTE, SEM_CONEXAO, GENERICO }
 
-/** Estado exibido por [AtribuirViagemActivity][br.com.anderson.meuprimeiroprojeto.gerencial.ui.AtribuirViagemActivity]. */
+/**
+ * O estado da tela de atribuir viagem
+ * ([AtribuirViagemActivity][br.com.anderson.meuprimeiroprojeto.gerencial.ui.AtribuirViagemActivity]).
+ */
 data class AtribuirViagemUiState(
+    /** `true` se o pedido não existe (a tela fecha). */
     val pedidoNaoEncontrado: Boolean = false,
+    /** Dados do pedido para o cabeçalho: número, destinatário e saldo em m³. */
     val pedidoId: Int = 0,
     val destinatarioNome: String = "",
     val saldo: Double = 0.0,
+    /** Opções das caixas de seleção. */
     val motoristas: List<MotoristaComId> = emptyList(),
     val caminhoes: List<Caminhao> = emptyList(),
+    /** `true` se não há motorista ou caminhão cadastrado (não dá para atribuir). */
     val semDadosParaAtribuir: Boolean = false,
+    /** `true` enquanto a atribuição está sendo enviada. */
     val enviando: Boolean = false,
+    /** A quantidade digitada é inválida (vazia, zero, negativa ou não é número). */
     val erroQuantidade: Boolean = false,
+    /** Erro vindo do servidor, ou `null`. */
     val erroAtribuir: AtribuirErro? = null,
+    /** Aviso de sucesso (a tela fecha), tratado uma vez só. */
     val sucesso: Evento<Unit>? = null
 )
 
 /**
- * Carrega o pedido (com saldo) e as listas de motoristas/caminhões cadastrados, e atribui a
- * viagem — a validação de saldo é feita em transação no servidor ([ViagemRepositorio.atribuir]),
- * então aqui só se valida a quantidade ser um número maior que zero antes de enviar.
+ * O "cérebro" da tela de atribuir viagem: carrega o pedido e as listas de motoristas e caminhões,
+ * e envia a atribuição.
+ *
+ * A regra mais importante (não reservar mais m³ do que o saldo) é conferida no servidor, dentro de
+ * uma transação ([ViagemRepositorio.atribuir]), porque só lá dá para garantir que duas atribuições
+ * ao mesmo tempo não passem juntas. Aqui só se barra o que é obviamente errado antes de gastar
+ * internet.
  */
 class AtribuirViagemViewModel : ViewModel() {
 
     companion object {
+        // Etiqueta das mensagens desta classe no Logcat.
         private const val TAG = "AtribuirViagemViewModel"
 
         // Atribuir precisa de conexão na hora (transação no servidor) — sem isso o gerente
         // ficaria esperando pra sempre, então cortamos e mostramos erro de conexão.
+        // O tempo máximo de espera é de 10 segundos.
         private const val TEMPO_LIMITE_MS = 10_000L
     }
 
+    // `_estado` é a versão que o ViewModel pode mudar; `estado` é a versão só de leitura da tela.
     private val _estado = MutableLiveData(AtribuirViagemUiState())
+    /** O estado atual da tela; a tela é avisada toda vez que ele muda. */
     val estado: LiveData<AtribuirViagemUiState> = _estado
 
-    /** Busca o pedido (pro saldo) e as listas de motoristas/caminhões cadastrados para os spinners. */
+    /**
+     * Busca o pedido (para mostrar o saldo) e as listas de motoristas e caminhões (para as caixas de
+     * seleção). Se o pedido não existir, avisa a tela. Se uma das listas falhar, ela fica vazia e o
+     * erro vai para o Logcat.
+     *
+     * O saldo mostrado é calculado por [SaldoPedido], a mesma conta que a transação de atribuir usa
+     * para aceitar ou recusar. Assim o gerente vê exatamente o valor que pode atribuir (por exemplo
+     * 1,1, e não 1,0999999999999996).
+     */
     fun carregar(pedidoId: Int) {
         viewModelScope.launch {
             val pedido = try {
@@ -81,7 +109,7 @@ class AtribuirViagemViewModel : ViewModel() {
             _estado.value = AtribuirViagemUiState(
                 pedidoId = pedidoId,
                 destinatarioNome = pedido.destinatarioNome,
-                saldo = pedido.quantidadeTotalM3 - pedido.m3Alocados,
+                saldo = SaldoPedido.calcular(pedido.quantidadeTotalM3, pedido.m3Alocados),
                 motoristas = motoristas,
                 caminhoes = caminhoes,
                 semDadosParaAtribuir = motoristas.isEmpty() || caminhoes.isEmpty()
@@ -90,9 +118,13 @@ class AtribuirViagemViewModel : ViewModel() {
     }
 
     /**
-     * Valida a quantidade digitada e envia a atribuição ao repositório. A validação de saldo em
-     * si (quantidade <= saldo) é feita em transação no servidor, então aqui só barramos entradas
-     * obviamente inválidas (vazio, não numérico, <= 0) antes de gastar uma chamada de rede.
+     * Confere a quantidade digitada e envia a atribuição.
+     *
+     * 1. Converte o texto em número (aceita vírgula). Se ficar vazio, não for número ou for menor ou
+     *    igual a zero, marca o erro e para.
+     * 2. Envia para o servidor com no máximo 10 segundos de espera (`withTimeout`).
+     * 3. Trata o resultado: sucesso, saldo insuficiente (outro gerente pode ter reservado antes),
+     *    sem conexão, ou erro genérico.
      */
     fun atribuir(pedidoId: Int, motorista: MotoristaComId, caminhao: Caminhao, quantidadeDigitada: String) {
         val quantidadeM3 = quantidadeDigitada.trim().replace(',', '.').toDoubleOrNull()
@@ -109,7 +141,6 @@ class AtribuirViagemViewModel : ViewModel() {
                         pedidoId = pedidoId,
                         motoristaUid = motorista.uid,
                         motoristaNome = motorista.perfil.nome,
-                        motoristaCpf = motorista.perfil.cpf,
                         caminhaoPlaca = caminhao.placa,
                         metrosCubicos = quantidadeM3
                     )

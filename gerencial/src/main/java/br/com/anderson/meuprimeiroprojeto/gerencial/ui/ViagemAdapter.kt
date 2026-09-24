@@ -16,9 +16,15 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Adapter da lista de viagens de um pedido (histórico). Recebe a lista já pronta da ViewModel e
- * dois callbacks (cancelar e ver rota) — a decisão de habilitar cada ação é feita aqui, olhando
- * o status/dataInicio de cada viagem, mas quem executa a ação é sempre a ViewModel/Activity.
+ * O "Adapter" da lista de viagens no histórico de um pedido ([HistoricoPedidoActivity]).
+ *
+ * O Adapter é o intermediário entre a lista de dados e o RecyclerView (a lista rolável): diz quantos
+ * itens há e como preencher cada linha. Cada linha mostra motorista e placa, situação, detalhes
+ * (m³ e datas, ou o motivo do cancelamento), os km (se já calculados) e um botão Cancelar.
+ *
+ * Recebe duas funções da tela: [aoCancelar] (botão Cancelar) e [aoVerRota] (toque na linha, abre o
+ * detalhe do roteiro). O Adapter decide QUANDO cada ação está disponível, olhando a situação da
+ * viagem, mas quem EXECUTA a ação é sempre a tela/ViewModel.
  */
 class ViagemAdapter(
     private val itens: List<Pair<String, ViagemRemota>>,
@@ -26,7 +32,10 @@ class ViagemAdapter(
     private val aoVerRota: (viagemId: String, roteiroId: String) -> Unit
 ) : RecyclerView.Adapter<ViagemAdapter.ViewHolder>() {
 
-    /** Referências das Views de um item da lista, encontradas uma única vez (evita findViewById repetido). */
+    /**
+     * Guarda os componentes de uma linha, encontrados uma única vez com `findViewById`. Quando a
+     * linha é reaproveitada na rolagem, eles já estão à mão.
+     */
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val textMotorista: TextView = view.findViewById(R.id.textMotorista)
         val textStatus: TextView = view.findViewById(R.id.textStatus)
@@ -35,15 +44,29 @@ class ViagemAdapter(
         val botaoCancelar: Button = view.findViewById(R.id.botaoCancelar)
     }
 
+    // Formato de data e hora, por exemplo "21/09/2026 14:35".
     private val formatoData = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.forLanguageTag("pt-BR"))
 
-    /** Infla o layout de um item da lista de viagens. */
+    /**
+     * Chamado pelo RecyclerView quando precisa de uma linha nova: transforma ("infla") o layout
+     * `item_viagem.xml` em componentes e embrulha num ViewHolder.
+     */
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_viagem, parent, false)
         return ViewHolder(view)
     }
 
-    /** Preenche o item na posição [position]: motorista/caminhão, status e detalhes (m³, datas, motivo). */
+    /**
+     * Chamado pelo RecyclerView para preencher uma linha com a viagem da posição [position].
+     *
+     * O texto de detalhes muda conforme a situação:
+     * - cancelada: m³ e o motivo;
+     * - ainda não saiu (sem data de início): m³ e a data da atribuição;
+     * - já saiu: m³, início e, se já entregue, o fim.
+     *
+     * O botão Cancelar só aparece para viagens ATRIBUIDA ou EM_ROTA. Tocar na linha abre o roteiro,
+     * mas só se a viagem já estiver em algum roteiro.
+     */
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val (viagemId, item) = itens[position]
         val contexto = holder.itemView.context
@@ -104,6 +127,6 @@ class ViagemAdapter(
         }
     }
 
-    /** Quantidade de itens da lista, exigido pelo RecyclerView pra saber quanto rolar. */
+    /** Quantos itens a lista tem. O RecyclerView usa isso para saber até onde dá para rolar. */
     override fun getItemCount(): Int = itens.size
 }

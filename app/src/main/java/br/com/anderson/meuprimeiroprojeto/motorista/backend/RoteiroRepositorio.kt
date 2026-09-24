@@ -11,34 +11,55 @@ import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.withTimeout
 
 /**
- * Monta e conduz o roteiro do motorista: adicionar/remover viagem (enquanto planejando),
- * iniciar, marcar entrega e encerrar (com o cálculo do rateio de km). Só o próprio motorista
- * mexe no seu roteiro — sem concorrência entre motoristas diferentes, então a maioria das
- * escritas aqui não precisa de transação (diferente de "atribuir viagem" no gerencial, que pode
- * ter dois gerentes mexendo no saldo do mesmo pedido ao mesmo tempo). A exceção é
- * [marcarEntregue]: ali a concorrência não é com outro motorista, é com o próprio gerente, que
- * pode cancelar a viagem remotamente enquanto o motorista está sem sinal — por isso ela usa
- * transação, mesmo sendo uma escrita só do motorista.
+ * Tudo o que o motorista faz com o roteiro dele, gravando no Firestore.
+ *
+ * Roteiro é uma saída do caminhão levando várias viagens de uma vez. A "vida" de um roteiro é:
+ * 1. PLANEJANDO: o motorista vai colocando e tirando viagens ([adicionarViagem], [removerViagem]).
+ * 2. EM_ROTA: o motorista saiu da usina ([iniciarRoteiro]) e vai marcando cada entrega
+ *    ([marcarEntregue]).
+ * 3. CONCLUIDO: todas as viagens foram resolvidas e o motorista encerrou ([encerrarRoteiro]); os
+ *    km rodados são divididos entre os pedidos.
+ *
+ * Uma palavra sobre "transação": é um jeito de gravar em que o Firestore primeiro lê o documento,
+ * deixa o código decidir o que fazer e só grava se ninguém mexeu no documento nesse meio-tempo
+ * (se mexeram, ele repete tudo). Serve para evitar que duas pessoas, gravando ao mesmo tempo,
+ * estraguem o trabalho uma da outra. O preço é que precisa de internet na hora.
+ *
+ * Aqui, na maioria das gravações só o próprio motorista mexe no roteiro dele, então não há
+ * disputa e não é preciso transação. A exceção é [marcarEntregue]: o gerente pode cancelar a
+ * viagem pelo app dele enquanto o motorista está sem sinal. Por isso essa gravação usa transação.
+ *
+ * É um `object`: só existe uma cópia dele no app, usada direto pelo nome.
  */
 object RoteiroRepositorio {
 
+    // "TAG" é a etiqueta que aparece no Logcat do Android Studio, para achar as mensagens desta classe.
     private const val TAG = "RoteiroRepositorio"
 
-    // marcarEntregue precisa de conexão na hora (transação) — sem isso o motorista ficaria
-    // esperando pra sempre, então cortamos e guardamos a confirmação na fila local.
+    // Quanto tempo (10 segundos) esperar a transação de "marcar entregue" antes de desistir e
+    // guardar a confirmação na fila do celular para mandar depois.
     private const val TEMPO_LIMITE_MS = 10_000L
 
     private val db get() = Firebase.firestore
 
-    /** Lançada ao tentar adicionar uma viagem com caminhão diferente das já presentes no roteiro. */
+    /**
+     * Erro lançado ao tentar colocar no roteiro uma viagem de um caminhão diferente do que o
+     * roteiro já usa (todas as viagens de um roteiro precisam ser do mesmo caminhão).
+     */
     class CaminhaoIncompativelException :
         Exception("Esta viagem usa um caminhão diferente do roteiro atual")
 
-    /** Lançada ao tentar adicionar/remover viagem de um roteiro que já foi iniciado. */
+    /** Erro lançado ao tentar colocar ou tirar viagens de um roteiro que já saiu da usina. */
     class RoteiroJaIniciadoException :
         Exception("Não é possível alterar as viagens de um roteiro já iniciado")
 
-    /** Busca o roteiro ativo do motorista (planejando ou em rota) — só pode haver um por vez. */
+    /**
+     * Procura o roteiro "ativo" do motorista: um roteiro sendo montado (PLANEJANDO) ou já na rua
+     * (EM_ROTA). Cada motorista só pode ter um desses por vez.
+     *
+     * Devolve um par (id do documento, dados do roteiro), ou `null` se o motorista não tem nenhum
+     * roteiro ativo agora.
+     */
     suspend fun buscarRoteiroAtivo(motoristaUid: String): Pair<String, RoteiroRemota>? {
         val snapshot = db.collection("roteiros")
             .whereEqualTo("motoristaUid", motoristaUid)
@@ -50,17 +71,23 @@ object RoteiroRepositorio {
         return documento.id to remoto
     }
 
-    /** Busca um roteiro específico pelo id do documento. */
+    /** Busca um roteiro pelo id do documento. Devolve `null` se ele não existir. */
     suspend fun buscarPorId(roteiroId: String): RoteiroRemota? {
         val documento = db.collection("roteiros").document(roteiroId).get().aguardar()
         return documento.toObject(RoteiroRemota::class.java)
     }
 
     /**
-     * Adiciona a viagem ao roteiro ativo do motorista, criando um roteiro novo (PLANEJANDO) se
-     * ele ainda não tiver nenhum. Precisa de conexão na hora: lê o roteiro/as viagens já nele
-     * antes de decidir (valida caminhão consistente), diferente das escritas "cegas" como
-     * iniciar/marcar entregue. Retorna o id do roteiro (novo ou existente).
+     * Coloca a viagem no roteiro ativo do motorista e devolve o id desse roteiro.
+     *
+     * Passo a passo:
+     * 1. Busca a viagem. Se ela não existir, para com erro.
+     * 2. Procura o roteiro ativo do motorista. Se não houver, cria um novo, já PLANEJANDO.
+     * 3. Se o roteiro já saiu da usina, para com [RoteiroJaIniciadoException].
+     * 4. Se o roteiro já tem viagens de outro caminhão, para com [CaminhaoIncompativelException].
+     * 5. Grava na viagem o id do roteiro (é isso que "liga" a viagem ao roteiro).
+     *
+     * Precisa de internet na hora, porque precisa ler o roteiro e as viagens antes de decidir.
      */
     suspend fun adicionarViagem(viagemId: String, motoristaUid: String): String {
         val viagem = ViagemRepositorio.buscarPorId(viagemId)
@@ -94,8 +121,10 @@ object RoteiroRepositorio {
     }
 
     /**
-     * Remove a viagem do roteiro (só funciona enquanto ele está PLANEJANDO). Se essa era a
-     * última viagem do roteiro, apaga o próprio documento do roteiro (evita roteiro vazio órfão).
+     * Tira a viagem do roteiro (só é permitido enquanto o roteiro está PLANEJANDO).
+     *
+     * Se essa era a última viagem do roteiro, apaga também o documento do roteiro, para não ficar
+     * um roteiro vazio "esquecido" no banco.
      */
     suspend fun removerViagem(viagemId: String, roteiroId: String) {
         val roteiro = buscarPorId(roteiroId)
@@ -110,9 +139,13 @@ object RoteiroRepositorio {
     }
 
     /**
-     * Inicia o roteiro: muda o status dele e de todas as suas viagens pra EM_ROTA de uma vez,
-     * numa escrita em lote (WriteBatch). Não espera confirmação do servidor — mesmo raciocínio
-     * de sempre, funciona offline.
+     * Inicia o roteiro: o roteiro e todas as viagens indicadas passam para EM_ROTA, com o horário
+     * de agora como início.
+     *
+     * Usa um "lote" (batch): várias gravações empacotadas juntas, que acontecem todas ou nenhuma.
+     * Repare que esta função não é `suspend` e não espera resposta: o Firestore guarda o lote no
+     * próprio celular e envia sozinho quando houver internet. Assim o motorista consegue sair da
+     * usina mesmo sem sinal.
      */
     fun iniciarRoteiro(roteiroId: String, viagemIds: List<String>) {
         val agora = System.currentTimeMillis()
@@ -131,20 +164,21 @@ object RoteiroRepositorio {
     }
 
     /**
-     * Marca uma entrega como concluída — diferente das outras escritas "cegas" deste objeto,
-     * esta precisa ler o status atual primeiro: se o gerente cancelou essa viagem remotamente
-     * enquanto o motorista estava offline, uma escrita cega poderia sobrescrever o cancelamento
-     * de volta pra CONCLUIDA (corrompendo o saldo em m³ do pedido, que o cancelamento já
-     * devolveu). Por isso usa uma transação, o que exige conexão na hora.
+     * Marca uma entrega como feita. Devolve `true` se o servidor confirmou na hora, ou `false` se
+     * a confirmação ficou guardada no celular para ser enviada depois.
      *
-     * Pra não perder a resiliência offline que o motorista precisa em campo, quando a transação
-     * não consegue completar a tempo (sem sinal agora), a confirmação é guardada localmente
-     * (fila em Room) e o [RastreamentoService][br.com.anderson.meuprimeiroprojeto.motorista.gps.RastreamentoService]
-     * tenta reenviar automaticamente a cada atualização de localização enquanto o roteiro
-     * estiver em rota — sem o motorista precisar fazer nada.
+     * Por que é diferente de [iniciarRoteiro]? Imagine: o motorista está sem sinal, o gerente
+     * cancela a viagem no escritório (o que devolve os m³ ao saldo do pedido) e depois o motorista
+     * marca "entregue". Se a gravação fosse "cega", quando o sinal voltasse ela apagaria o
+     * cancelamento e o saldo do pedido ficaria errado. Por isso a gravação de verdade
+     * ([confirmarEntregaNoServidor]) é uma transação que confere a situação antes.
      *
-     * Retorna true se confirmou agora mesmo no servidor, false se ficou na fila local pra
-     * reenviar depois (não é um erro — é esperado e tratado).
+     * Transação precisa de internet. Então a função tenta por até 10 segundos (`withTimeout`); se
+     * não conseguir, guarda a confirmação numa fila local (tabela `EntregaPendente`, no Room). O
+     * `RastreamentoService` tenta reenviar essa fila a cada nova posição de GPS, até dar certo —
+     * sem o motorista precisar fazer nada.
+     *
+     * Recebe um `Context` porque precisa abrir o banco local (Room).
      */
     suspend fun marcarEntregue(context: Context, viagemId: String): Boolean {
         val agora = System.currentTimeMillis()
@@ -161,10 +195,14 @@ object RoteiroRepositorio {
     }
 
     /**
-     * A escrita em si: só grava CONCLUIDA se a viagem ainda estiver EM_ROTA no servidor agora —
-     * se já não estiver mais (ex.: CANCELADA pelo gerente nesse meio-tempo), não faz nada, porque
-     * a viagem já foi resolvida por outro caminho. Chamada tanto por [marcarEntregue] quanto pela
-     * fila de retentativa do RastreamentoService.
+     * A gravação da entrega no servidor, feita numa transação: só muda a viagem para CONCLUIDA se
+     * ela ainda estiver EM_ROTA agora. Se não estiver mais (por exemplo, o gerente cancelou), não
+     * faz nada, porque a viagem já foi resolvida por outro caminho.
+     *
+     * [dataFim] é o horário em que o motorista tocou em "entregue" — e não o horário em que a
+     * gravação finalmente conseguiu chegar ao servidor.
+     *
+     * Chamada por [marcarEntregue] e pela fila de reenvio do `RastreamentoService`.
      */
     suspend fun confirmarEntregaNoServidor(viagemId: String, dataFim: Long) {
         val viagemRef = db.collection("viagens").document(viagemId)
@@ -184,12 +222,26 @@ object RoteiroRepositorio {
     }
 
     /**
-     * Encerra o roteiro: rateia o [kmTotalRota] entre as viagens CONCLUIDA por peso
-     * (volume × distância dedicada do pedido) — canceladas ficam de fora do rateio (não entram
-     * no pesoTotal). A última viagem (por `dataAtribuicao`, ordem estável) recebe o resto da divisão, garantindo
-     * que a soma dos km atribuídos seja exatamente igual a [kmTotalRota] mesmo com arredondamento
-     * de ponto flutuante. [viagens] e [distanciasPorPedido] já vêm prontos de quem chamou (a
-     * ViewModel, que tem acesso ao Room pra calcular [kmTotalRota] via Haversine).
+     * Encerra o roteiro e divide os km rodados entre as viagens entregues (o "rateio de km").
+     *
+     * Como a divisão funciona: cada viagem entregue ganha um "peso" = m³ da viagem × distância
+     * dedicada do pedido (a distância da usina até a obra). Cada viagem recebe uma fatia do
+     * [kmTotalRota] proporcional ao seu peso.
+     *
+     * Exemplo: o caminhão rodou 100 km com duas viagens. A leva 5 m³ para uma obra a 10 km
+     * (peso 50); B leva 5 m³ para uma obra a 30 km (peso 150). Peso total = 200. A recebe
+     * 100 × 50 / 200 = 25 km, e B recebe o que sobra: 75 km.
+     *
+     * Regras importantes:
+     * - Viagens canceladas ficam de fora: não recebem km e não entram no peso total.
+     * - A última viagem (pela ordem de atribuição) recebe "o que sobrou" em vez de fazer a conta.
+     *   Contas com números quebrados no computador têm pequenos arredondamentos; assim a soma
+     *   das fatias dá exatamente o [kmTotalRota].
+     * - Se o peso total for zero (m³ ou distância zerados), ninguém recebe km e só fica um aviso
+     *   no Logcat.
+     *
+     * Tudo (os km de cada viagem e o roteiro CONCLUIDO) é gravado num único lote. [viagens] e
+     * [distanciasPorPedido] já chegam prontos de quem chamou (o `RoteiroViewModel`).
      */
     suspend fun encerrarRoteiro(
         roteiroId: String,
@@ -204,6 +256,7 @@ object RoteiroRepositorio {
         val lote = db.batch()
 
         if (concluidas.isNotEmpty()) {
+            // Triple = um "trio": guarda três coisas juntas (id, viagem, peso).
             val pesos = concluidas.map { (id, viagem) ->
                 val distancia = distanciasPorPedido[viagem.pedidoId] ?: 0.0
                 Triple(id, viagem, viagem.metrosCubicos * distancia)

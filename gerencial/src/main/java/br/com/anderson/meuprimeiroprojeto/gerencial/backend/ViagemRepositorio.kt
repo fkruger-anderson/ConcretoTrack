@@ -1,54 +1,73 @@
 package br.com.anderson.meuprimeiroprojeto.gerencial.backend
 
+import br.com.anderson.meuprimeiroprojeto.gerencial.dados.SaldoPedido
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusViagem
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 
-/** Atribuição, cancelamento e consulta de viagens — inclusive as escritas que mexem no saldo do pedido, sempre em transação. */
+/**
+ * Atribui, cancela e consulta viagens no Firestore (coleção `viagens`).
+ *
+ * As duas gravações daqui mexem no saldo do pedido (os m³ reservados) e por isso sempre usam
+ * transação. Transação é um jeito de gravar em que o Firestore lê os documentos, deixa o código
+ * decidir e só grava se ninguém mexeu neles nesse meio-tempo; se mexeram, ele repete tudo. Isso
+ * impede, por exemplo, que duas atribuições feitas ao mesmo tempo reservem mais concreto do que
+ * o pedido tem. Transação precisa de internet na hora.
+ *
+ * É um `object`: só existe uma cópia, usada direto pelo nome.
+ */
 object ViagemRepositorio {
 
     private val db get() = Firebase.firestore
 
-    /** Lançada ao tentar atribuir uma viagem com m³ maior que o saldo restante do pedido. */
+    /** Erro lançado ao tentar atribuir mais m³ do que o saldo que sobra no pedido. */
     class SaldoInsuficienteException : Exception("m³ maior que o saldo disponível")
-    /** Lançada ao tentar cancelar uma viagem que já está concluída ou cancelada. */
+    /** Erro lançado ao tentar cancelar uma viagem que já foi concluída ou cancelada. */
     class EstadoInvalidoException : Exception("Essa viagem não pode mais ser cancelada")
 
     /**
-     * Cria a viagem já vinculada a um motorista e um caminhão, e reserva o saldo do pedido —
-     * tudo numa transação, pra não estourar o saldo se o gerente atribuir mais de uma viagem
-     * ao mesmo pedido rapidamente. A viagem nasce "atribuída"; quem muda pra "em rota" é o
-     * próprio motorista, ao iniciar o trânsito no app dele.
+     * Cria uma viagem nova, ligada a um motorista e a um caminhão, e reserva os m³ dela no pedido.
+     * Devolve o id da viagem criada.
+     *
+     * Dentro da transação:
+     * 1. lê o pedido e calcula o saldo (total - já reservado) com [SaldoPedido], que arredonda para
+     *    o litro — sem isso, atribuir exatamente o que sobrou (por exemplo 1,1 de um pedido de 9,1
+     *    com 8 reservados) era recusado;
+     * 2. se a quantidade pedida for maior que o saldo, lança [SaldoInsuficienteException] e nada é
+     *    gravado;
+     * 3. soma a quantidade em `m3Alocados` do pedido (já arredondada, para não acumular
+     *    "sobrinhas" no banco) e cria o documento da viagem, já ATRIBUIDA.
+     *
+     * Quem muda a viagem para "em rota" depois é o motorista, ao iniciar o roteiro no app dele.
      */
     suspend fun atribuir(
         pedidoId: Int,
         motoristaUid: String,
         motoristaNome: String,
-        motoristaCpf: String,
         caminhaoPlaca: String,
         metrosCubicos: Double
     ): String {
         val pedidoRef = db.collection("pedidos").document(pedidoId.toString())
+        // `document()` sem nome cria uma referência com um id novo e aleatório para a viagem.
         val viagemRef = db.collection("viagens").document()
 
         db.runTransaction { transacao ->
             val pedidoSnapshot = transacao.get(pedidoRef)
             val total = pedidoSnapshot.getDouble("quantidadeTotalM3") ?: 0.0
             val alocados = pedidoSnapshot.getDouble("m3Alocados") ?: 0.0
-            val saldo = total - alocados
+            val saldo = SaldoPedido.calcular(total, alocados)
 
             if (metrosCubicos > saldo) {
                 throw SaldoInsuficienteException()
             }
 
-            transacao.update(pedidoRef, "m3Alocados", alocados + metrosCubicos)
+            transacao.update(pedidoRef, "m3Alocados", SaldoPedido.arredondar(alocados + metrosCubicos))
             transacao.set(
                 viagemRef,
                 ViagemRemota(
                     pedidoId = pedidoId,
                     motoristaUid = motoristaUid,
                     motoristaNome = motoristaNome,
-                    motoristaCpf = motoristaCpf,
                     caminhaoPlaca = caminhaoPlaca,
                     metrosCubicos = metrosCubicos,
                     status = StatusViagem.ATRIBUIDA.name,
@@ -62,9 +81,17 @@ object ViagemRepositorio {
     }
 
     /**
-     * Cancela a viagem (só funciona se ainda estiver atribuída ou em rota) e devolve os m³
-     * reservados ao saldo do pedido — tudo na mesma transação, para não deixar o saldo
-     * inconsistente se o Firestore reordenar essa escrita com uma atribuição concorrente.
+     * Cancela uma viagem e devolve os m³ dela para o saldo do pedido.
+     *
+     * Dentro da transação:
+     * 1. lê a viagem; se ela não estiver ATRIBUIDA nem EM_ROTA (já foi entregue ou cancelada),
+     *    lança [EstadoInvalidoException];
+     * 2. lê o pedido e subtrai os m³ da viagem de `m3Alocados`, arredondando para o litro (ver
+     *    [SaldoPedido]) e sem nunca deixar negativo (`coerceAtLeast(0.0)`);
+     * 3. marca a viagem como CANCELADA, com o motivo e o horário.
+     *
+     * Por ser uma transação, o cancelamento e a devolução do saldo acontecem juntos, ou nenhum dos
+     * dois acontece.
      */
     suspend fun cancelar(viagemId: String, motivo: String) {
         val viagemRef = db.collection("viagens").document(viagemId)
@@ -82,7 +109,7 @@ object ViagemRepositorio {
             val pedidoSnapshot = transacao.get(pedidoRef)
             val alocados = pedidoSnapshot.getDouble("m3Alocados") ?: 0.0
 
-            transacao.update(pedidoRef, "m3Alocados", (alocados - metrosCubicos).coerceAtLeast(0.0))
+            transacao.update(pedidoRef, "m3Alocados", SaldoPedido.arredondar(alocados - metrosCubicos).coerceAtLeast(0.0))
             transacao.update(
                 viagemRef,
                 mapOf(
@@ -95,7 +122,10 @@ object ViagemRepositorio {
         }.aguardar()
     }
 
-    /** Histórico de viagens de um pedido, mais recentes primeiro — usado na tela de detalhe do pedido. */
+    /**
+     * Todas as viagens de um pedido, da mais recente para a mais antiga (`sortedByDescending`).
+     * Usada no histórico do pedido. Cada item é um par (id da viagem, dados da viagem).
+     */
     suspend fun listarPorPedido(pedidoId: Int): List<Pair<String, ViagemRemota>> {
         val snapshot = db.collection("viagens")
             .whereEqualTo("pedidoId", pedidoId)
@@ -109,7 +139,10 @@ object ViagemRepositorio {
             .sortedByDescending { it.second.dataAtribuicao }
     }
 
-    /** Viagens de um roteiro específico — usado na tela de detalhe do roteiro (mapa + rateio). */
+    /**
+     * Todas as viagens de um roteiro, em ordem de atribuição. Usada no detalhe do roteiro (mapa e
+     * tabela de divisão dos km).
+     */
     suspend fun listarPorRoteiro(roteiroId: String): List<Pair<String, ViagemRemota>> {
         val snapshot = db.collection("viagens")
             .whereEqualTo("roteiroId", roteiroId)

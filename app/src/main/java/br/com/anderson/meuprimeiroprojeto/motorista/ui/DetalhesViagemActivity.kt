@@ -19,17 +19,29 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Tela de detalhe de uma viagem: dados do pedido e um botão cuja ação muda conforme o contexto
- * (adicionar/remover do roteiro, marcar como entregue). Sem mapa próprio — o trajeto ao vivo e o
- * km calculado vivem na aba Roteiro, já que os pontos de GPS agora pertencem ao roteiro inteiro.
+ * A tela de detalhes de uma viagem: destinatário, endereço, m³, caminhão e um botão de ação.
+ *
+ * O botão muda conforme a situação (quem decide é o [DetalhesViagemViewModel]):
+ * - "Adicionar ao roteiro", se a viagem ainda não está em nenhum roteiro;
+ * - "Remover do roteiro", se está num roteiro que ainda não saiu;
+ * - "Marcar como entregue", se o roteiro já está em rota;
+ * - nenhum botão, se a viagem já foi entregue ou cancelada.
+ *
+ * Esta tela não tem mapa: o trajeto e os km ficam na aba Roteiro, porque o GPS é do roteiro
+ * inteiro, não de uma viagem.
  */
 class DetalhesViagemActivity : AppCompatActivity() {
 
     companion object {
+        /**
+         * Nome do "extra" que leva o id da viagem. Quem abre esta tela coloca o id no Intent com
+         * esse nome, e esta tela o lê de volta no [onCreate].
+         */
         const val EXTRA_VIAGEM_ID = "viagem_id"
     }
 
     private val viewModel: DetalhesViagemViewModel by viewModels()
+    // Formato de data e hora, por exemplo "21/09/2026 14:35".
     private val formatoData = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.forLanguageTag("pt-BR"))
 
     private lateinit var viagemId: String
@@ -37,12 +49,15 @@ class DetalhesViagemActivity : AppCompatActivity() {
     private lateinit var textKm: TextView
     private lateinit var botaoAcao: Button
     private lateinit var textErro: TextView
+    // Guarda o último estado desenhado, para o clique do botão saber qual ação executar.
     private var estadoAtual: DetalhesViagemUiState = DetalhesViagemUiState()
 
     /**
-     * Infla o layout, resolve o id da viagem recebido por extra (sem ele a tela não faz sentido,
-     * então fecha na hora) e começa a observar o [estado][DetalhesViagemViewModel.estado] da
-     * ViewModel para redesenhar a tela a cada mudança.
+     * Chamado pelo Android quando a tela é criada.
+     *
+     * Lê o id da viagem que veio no Intent. Sem ele a tela não tem o que mostrar, então fecha na
+     * hora (`finish()`). Depois encontra os componentes, liga o clique do botão e começa a observar
+     * o estado do ViewModel. Os dados em si são carregados no [onResume].
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,9 +81,8 @@ class DetalhesViagemActivity : AppCompatActivity() {
     }
 
     /**
-     * Recarrega os dados da viagem sempre que a tela volta a ficar visível — por exemplo, depois
-     * que o motorista adiciona a viagem ao roteiro e volta pra cá, o botão precisa refletir o
-     * novo estado.
+     * Chamado pelo Android toda vez que a tela volta a aparecer na frente (inclusive na primeira
+     * vez). Recarrega a viagem, para o botão sempre refletir a situação mais recente.
      */
     override fun onResume() {
         super.onResume()
@@ -76,7 +90,13 @@ class DetalhesViagemActivity : AppCompatActivity() {
         viewModel.carregar(viagemId, uid)
     }
 
-    /** Preenche todos os campos da tela e o botão de ação a partir do estado atual da ViewModel. */
+    /**
+     * Desenha o estado atual na tela: textos da viagem, período (se já iniciou), km (se o roteiro
+     * já foi encerrado) e o botão certo para a situação.
+     *
+     * No fim, trata os "eventos" de uma vez só: uma mensagem de erro vira um Toast (o aviso que
+     * aparece rapidinho na parte de baixo da tela) e uma ação concluída fecha a tela.
+     */
     private fun exibirEstado(estado: DetalhesViagemUiState) {
         estadoAtual = estado
         if (estado.erroAoCarregar) {
@@ -135,7 +155,10 @@ class DetalhesViagemActivity : AppCompatActivity() {
         }
     }
 
-    /** Chama o método da ViewModel correspondente à ação atual do botão (ver [AcaoViagem]). */
+    /**
+     * Executado quando o botão é tocado: pede ao ViewModel a ação que o botão está mostrando agora
+     * (ver [AcaoViagem]).
+     */
     private fun executarAcao() {
         when (estadoAtual.acao) {
             AcaoViagem.ADICIONAR_AO_ROTEIRO -> viewModel.adicionarAoRoteiro(viagemId)
@@ -148,6 +171,7 @@ class DetalhesViagemActivity : AppCompatActivity() {
         }
     }
 
+    /** Mostra uma mensagem de erro no texto vermelho da tela. */
     private fun mostrarErro(mensagem: String) {
         textErro.text = mensagem
         textErro.visibility = View.VISIBLE

@@ -7,45 +7,72 @@ import androidx.lifecycle.viewModelScope
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.PedidoRepositorio
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.ViagemRemota
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.ViagemRepositorio
+import br.com.anderson.meuprimeiroprojeto.gerencial.dados.SaldoPedido
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusPedido
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusViagem
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
-/** Os três jeitos de terminar uma tentativa de cancelamento — a Activity escolhe o toast certo. */
+/** Os resultados possíveis de uma tentativa de cancelar viagem. A tela mostra o aviso certo para cada um. */
 enum class ResultadoCancelamento { SUCESSO, ESTADO_INVALIDO, ERRO_GENERICO }
 
-/** Estado exibido por [HistoricoPedidoActivity][br.com.anderson.meuprimeiroprojeto.gerencial.ui.HistoricoPedidoActivity]. */
+/**
+ * O estado da tela de histórico do pedido
+ * ([HistoricoPedidoActivity][br.com.anderson.meuprimeiroprojeto.gerencial.ui.HistoricoPedidoActivity]).
+ */
 data class HistoricoPedidoUiState(
+    /** `true` se o pedido não existe (a tela fecha). */
     val pedidoNaoEncontrado: Boolean = false,
+    /** Dados do cabeçalho: número, destinatário, m³ reservados, total, saldo e data de entrega. */
     val pedidoId: Int = 0,
     val destinatarioNome: String = "",
     val m3Alocados: Double = 0.0,
     val quantidadeTotalM3: Double = 0.0,
     val saldo: Double = 0.0,
     val dataEntrega: Long = 0,
+    /** Situação calculada do pedido. */
     val status: StatusPedido = StatusPedido.PENDENTE,
+    /** Soma dos km de todas as viagens não canceladas do pedido. */
     val totalKm: Double = 0.0,
+    /** As viagens do pedido, cada uma como par (id, dados). */
     val viagens: List<Pair<String, ViagemRemota>> = emptyList(),
+    /** `true` se não foi possível carregar. */
     val erroAoCarregar: Boolean = false,
+    /** Resultado do último cancelamento, tratado uma vez só. */
     val resultadoCancelamento: Evento<ResultadoCancelamento>? = null,
+    /** Aviso de erro ao trocar a data de entrega, tratado uma vez só. */
     val erroAtualizarDataEntrega: Evento<Unit>? = null
 )
 
-/** Histórico de viagens de um pedido: carrega o progresso do saldo e permite cancelar viagens. */
+/**
+ * O "cérebro" da tela de histórico do pedido: mostra o progresso do saldo e as viagens do pedido,
+ * e permite cancelar viagens e trocar a data de entrega.
+ */
 class HistoricoPedidoViewModel : ViewModel() {
 
     companion object {
         // Cancelar precisa de conexão na hora (transação no servidor) — sem isso o gerente
         // ficaria esperando pra sempre, então cortamos e mostramos erro genérico.
+        // O tempo máximo de espera é de 10 segundos.
         private const val TEMPO_LIMITE_MS = 10_000L
     }
 
+    // `_estado` é a versão que o ViewModel pode mudar; `estado` é a versão só de leitura da tela.
     private val _estado = MutableLiveData(HistoricoPedidoUiState())
+    /** O estado atual da tela; a tela é avisada toda vez que ele muda. */
     val estado: LiveData<HistoricoPedidoUiState> = _estado
 
-    /** Busca o pedido (progresso/saldo) e a lista de viagens associadas a ele. */
+    /**
+     * Busca o pedido e as viagens dele, e calcula:
+     * - o saldo, por [SaldoPedido] (arredondado para o litro). É dele que depende o botão
+     *   "Atribuir viagem": com a conta sem arredondar, sobrava um saldo minúsculo e o botão
+     *   continuava aparecendo num pedido já todo atribuído;
+     * - a situação do pedido, reaproveitando a lista de viagens já carregada para saber se há
+     *   viagem pendente (sem fazer outra consulta);
+     * - o total de km, somando as viagens que não foram canceladas (`?: 0.0` trata como zero as que
+     *   ainda não receberam km).
+     */
     fun carregar(pedidoId: Int) {
         viewModelScope.launch {
             try {
@@ -72,7 +99,7 @@ class HistoricoPedidoViewModel : ViewModel() {
                     destinatarioNome = pedido.destinatarioNome,
                     m3Alocados = pedido.m3Alocados,
                     quantidadeTotalM3 = pedido.quantidadeTotalM3,
-                    saldo = pedido.quantidadeTotalM3 - pedido.m3Alocados,
+                    saldo = SaldoPedido.calcular(pedido.quantidadeTotalM3, pedido.m3Alocados),
                     dataEntrega = pedido.dataEntrega,
                     status = status,
                     totalKm = totalKm,
@@ -85,9 +112,11 @@ class HistoricoPedidoViewModel : ViewModel() {
     }
 
     /**
-     * Cancela a viagem (devolvendo os m³ ao saldo do pedido, no servidor) e recarrega a tela.
-     * Recarrega mesmo em [ViagemRepositorio.EstadoInvalidoException] (ex.: já foi concluída por
-     * outro caminho) pra tela não ficar mostrando um estado desatualizado.
+     * Cancela a viagem (no servidor, o que devolve os m³ ao saldo do pedido) e recarrega a tela.
+     *
+     * Também recarrega quando a viagem já não podia ser cancelada ([ViagemRepositorio.EstadoInvalidoException],
+     * por exemplo porque o motorista acabou de entregar): assim a tela para de mostrar a situação
+     * antiga. Com no máximo 10 segundos de espera.
      */
     fun cancelar(viagemId: String, motivo: String, pedidoId: Int) {
         viewModelScope.launch {
@@ -110,9 +139,10 @@ class HistoricoPedidoViewModel : ViewModel() {
     }
 
     /**
-     * Corrige a data de entrega e recarrega a tela pra mostrar a data nova já formatada. Pedido
-     * concluído não pode mais ter a data alterada — o botão já fica desabilitado na tela, mas a
-     * checagem aqui também evita a chamada caso o estado esteja desatualizado.
+     * Troca a data de entrega do pedido e recarrega a tela para mostrar a data nova.
+     *
+     * Pedido concluído não pode mais mudar de data. O botão já fica desligado na tela nesse caso,
+     * mas a conferência aqui protege caso a tela esteja com um estado desatualizado.
      */
     fun atualizarDataEntrega(pedidoId: Int, novaData: Long) {
         if (_estado.value?.status == StatusPedido.CONCLUIDO) return

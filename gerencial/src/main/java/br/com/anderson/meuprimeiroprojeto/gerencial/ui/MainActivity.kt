@@ -6,13 +6,21 @@ import androidx.fragment.app.Fragment
 import br.com.anderson.meuprimeiroprojeto.gerencial.R
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
-/** Tela inicial do app gerencial: menu inferior com Pedidos, Mapa e Configurações. */
+/**
+ * A tela inicial do app gerencial, com um menu na parte de baixo: Pedidos, Mapa e Configurações.
+ *
+ * Esta Activity é só a "moldura": o conteúdo de cada aba é um `Fragment` (um pedaço de tela
+ * reaproveitável) que é trocado dentro de um espaço reservado no layout (`containerFragmento`).
+ */
 class MainActivity : AppCompatActivity() {
 
     /**
-     * Mostra o fragmento de Pedidos ao abrir e liga a navegação inferior. O `savedInstanceState`
-     * evita trocar o fragmento de novo numa recriação (ex.: giro de tela) — o FragmentManager já
-     * restaura sozinho o que estava sendo exibido.
+     * Chamado pelo Android quando a tela é criada. Mostra a aba Pedidos na primeira abertura e liga
+     * o menu de baixo para trocar de aba.
+     *
+     * O `savedInstanceState` vem preenchido quando a tela está sendo RECRIADA (por exemplo, ao
+     * girar o celular). Nesse caso o Android já restaura sozinho a aba que estava aberta, então não
+     * se coloca a aba Pedidos de novo por cima.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,7 +49,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Troca o fragmento exibido no container, usado pelos itens do menu inferior. */
+    /**
+     * Troca o conteúdo do espaço reservado pelo fragment recebido. `replace` tira o que estava lá e
+     * coloca o novo; `commit` confirma a troca.
+     */
     private fun mostrarFragmento(fragmento: Fragment) {
         supportFragmentManager.beginTransaction()
             .replace(R.id.containerFragmento, fragmento)

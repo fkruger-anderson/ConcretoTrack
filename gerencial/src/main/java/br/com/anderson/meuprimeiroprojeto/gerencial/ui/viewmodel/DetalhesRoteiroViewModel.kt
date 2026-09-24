@@ -13,59 +13,86 @@ import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusViagem
 import kotlinx.coroutines.launch
 
 /**
- * Uma linha da tabela de rateio: um pedido do roteiro, com peso/percentual/km já calculados.
- * [kmAtribuido] nulo é ambíguo por si só — pode ser uma viagem ainda não resolvida (o roteiro não
- * fechou ainda) ou uma viagem cancelada (nunca vai receber km, propositalmente fora do rateio).
- * [cancelada] existe só pra desfazer essa ambiguidade na hora de mostrar o texto certo.
+ * Uma linha da tabela de "rateio" (divisão dos km do roteiro entre os pedidos): um pedido do
+ * roteiro, com o peso, o percentual e os km que couberam a ele.
+ *
+ * [kmAtribuido] vazio (`null`) pode querer dizer duas coisas: a viagem ainda não foi resolvida (o
+ * roteiro não fechou) ou a viagem foi cancelada (e nunca vai receber km, de propósito). O campo
+ * [cancelada] existe só para a tela saber qual das duas mostrar.
  */
 data class ItemRateio(
     val viagemId: String,
     val pedidoId: Int,
     val destinatarioNome: String,
+    /** m³ desta viagem. */
     val volumeM3: Double,
+    /** Distância da usina até a obra do pedido. */
     val distanciaDedicadaKm: Double,
+    /** Peso = volume × distância. Quanto maior o peso, maior a fatia dos km. */
     val pesoTeorico: Double,
+    /** A fatia deste item, em % do peso total das viagens não canceladas. */
     val percentualRateio: Double,
+    /** Os km que foram de fato gravados para esta viagem ao encerrar o roteiro. */
     val kmAtribuido: Double?,
     val cancelada: Boolean,
+    /** `true` para a linha que deve aparecer em destaque (a viagem em que o gerente tocou). */
     val destacado: Boolean
 )
 
-/** Estado exibido por [DetalhesRoteiroActivity][br.com.anderson.meuprimeiroprojeto.gerencial.ui.DetalhesRoteiroActivity]. */
+/**
+ * O estado da tela de detalhe do roteiro
+ * ([DetalhesRoteiroActivity][br.com.anderson.meuprimeiroprojeto.gerencial.ui.DetalhesRoteiroActivity]).
+ */
 data class DetalhesRoteiroUiState(
+    /** `true` depois que os dados chegaram. */
     val carregado: Boolean = false,
+    /** Pontos de GPS do trajeto, para desenhar no mapa. */
     val pontos: List<PontoGpsRemoto> = emptyList(),
+    /** Dados do cabeçalho. */
     val motoristaNome: String = "",
     val caminhaoPlaca: String = "",
     val status: String = "",
     val dataInicio: Long? = null,
     val dataFim: Long? = null,
     val kmTotalRota: Double? = null,
+    /** As linhas da tabela de rateio. */
     val itens: List<ItemRateio> = emptyList()
 )
 
 /**
- * Carrega o roteiro, seus pontos de GPS e a tabela de rateio (peso teórico e percentual
- * recalculados aqui pra exibição; o `kmAtribuido` real de cada viagem já foi gravado por
- * `RoteiroRepositorio.encerrarRoteiro`, no app motorista, ao encerrar — aqui só se lê).
+ * O "cérebro" da tela de detalhe do roteiro: carrega o roteiro, os pontos do trajeto e monta a
+ * tabela de rateio de km.
+ *
+ * Os km de cada viagem já foram calculados e gravados pelo app do motorista, ao encerrar o
+ * roteiro (`RoteiroRepositorio.encerrarRoteiro`, no módulo `:app`). Aqui só se LÊ esse valor; o
+ * peso e o percentual são recalculados apenas para mostrar na tabela como a divisão foi feita.
  */
 class DetalhesRoteiroViewModel : ViewModel() {
 
     companion object {
+        // Etiqueta das mensagens desta classe no Logcat.
         private const val TAG = "DetalhesRoteiroViewModel"
     }
 
+    // `_estado` é a versão que o ViewModel pode mudar; `estado` é a versão só de leitura da tela.
     private val _estado = MutableLiveData(DetalhesRoteiroUiState())
+    /** O estado atual da tela; a tela é avisada toda vez que ele muda. */
     val estado: LiveData<DetalhesRoteiroUiState> = _estado
 
     /**
-     * Carrega o roteiro, os pontos de GPS registrados nele e monta a tabela de rateio: cada
-     * viagem do roteiro ganha um "peso teórico" (m³ da viagem × distância dedicada do pedido) e
-     * um percentual sobre o peso total das viagens não canceladas — é assim que o km total
-     * percorrido pelo caminhão nessa rota é dividido entre os pedidos atendidos. Se o roteiro não
-     * for encontrado, a função só loga e sai sem atualizar o estado (a tela fica com
-     * `carregado = false`). Falhas ao buscar pontos, viagens ou um pedido individual são logadas
-     * e tratadas com listas vazias/zero, pra um dado faltando não travar a tela inteira.
+     * Carrega tudo o que a tela mostra:
+     * 1. o roteiro (se não existir, só registra no Logcat e para — a tela fica vazia);
+     * 2. os pontos de GPS, para o mapa;
+     * 3. as viagens do roteiro e a distância dedicada de cada pedido envolvido;
+     * 4. a tabela de rateio: cada viagem ganha um peso (m³ × distância) e um percentual sobre o
+     *    peso total das viagens NÃO canceladas.
+     *
+     * Exemplo: duas viagens de 5 m³, uma para uma obra a 10 km (peso 50) e outra a 30 km (peso 150).
+     * Peso total 200: a primeira fica com 25% dos km e a segunda com 75%.
+     *
+     * [viagemDestacadaId] é a viagem que o gerente tocou no histórico, para a linha dela aparecer
+     * em destaque. Se um dado faltar (falha de internet), ele vira lista vazia ou zero, para não
+     * travar a tela inteira.
      */
     fun carregar(roteiroId: String, viagemDestacadaId: String?) {
         viewModelScope.launch {

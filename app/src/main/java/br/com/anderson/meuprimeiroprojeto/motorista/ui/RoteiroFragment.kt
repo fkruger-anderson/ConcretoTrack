@@ -35,10 +35,25 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.PolylineOptions
 
-/** Aba "Roteiro": roteiro atual do motorista — sem roteiro, planejando ou em rota. */
+/**
+ * A aba "Roteiro": o roteiro atual do motorista.
+ *
+ * A tela muda conforme a situação:
+ * - sem roteiro: só um aviso de que não há roteiro;
+ * - roteiro PLANEJANDO: a lista das viagens e o botão "Iniciar roteiro";
+ * - roteiro EM_ROTA: a lista (com botão "Entregue" em cada viagem pendente), o mapa com o
+ *   trajeto até agora, o botão "Encerrar roteiro" e, se preciso, o aviso de bateria.
+ *
+ * Também é esta aba que pede as permissões de localização e notificação, e que religa o
+ * rastreamento se o Android tiver matado o serviço de GPS.
+ *
+ * `OnMapReadyCallback` no cabeçalho quer dizer que esta classe "sabe responder" quando o mapa do
+ * Google termina de carregar (função [onMapReady]).
+ */
 class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback {
 
     companion object {
+        // Espaço (em pixels) deixado nas bordas ao enquadrar o trajeto no mapa.
         private const val PADDING_LIMITES_PX = 120
 
         // Mesmo intervalo do RastreamentoService — não faz sentido checar por pontos novos mais
@@ -56,7 +71,9 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
     private lateinit var textAvisoPermissao: TextView
     private lateinit var botaoAjustarBateria: Button
     private lateinit var textBateria: TextView
+    // O mapa só existe depois que termina de carregar; até lá fica null.
     private var mapa: GoogleMap? = null
+    // O último estado recebido do ViewModel, guardado para uso fora do exibirEstado.
     private var estadoAtual: RoteiroUiState = RoteiroUiState()
 
     /**
@@ -65,9 +82,14 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
      * mapa fica congelado no trajeto que existia quando a aba foi aberta. Este `Handler` só
      * relê os pontos (local, via [RoteiroViewModel.atualizarPontos]) a cada
      * [INTERVALO_ATUALIZACAO_MAPA_MS], pra manter o desenho do trajeto acompanhando a viagem.
+     *
+     * Em palavras simples: o `Handler` é um "despertador". O `Runnable` é a tarefa que ele executa;
+     * no fim da tarefa, ela mesma agenda o próximo despertar para daqui a 10 segundos, formando
+     * uma repetição.
      */
     private val handlerAtualizacaoMapa = Handler(Looper.getMainLooper())
     private val atualizadorDeMapa = object : Runnable {
+        /** A tarefa do "despertador": relê os pontos e agenda a si mesma de novo para daqui a 10 s. */
         override fun run() {
             viewModel.atualizarPontos()
             handlerAtualizacaoMapa.postDelayed(this, INTERVALO_ATUALIZACAO_MAPA_MS)
@@ -75,9 +97,13 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
     }
 
     /**
-     * Pede localização fina/aproximada (e notificações, no Android 13+) pra o rastreamento poder
-     * funcionar. Se concedida e o roteiro já estava EM_ROTA ao abrir a tela (ex.: o serviço foi
-     * morto pelo sistema enquanto o app estava fechado), retoma o rastreamento na hora.
+     * Pede a permissão de localização (e a de notificações, no Android 13 ou mais novo) para o
+     * rastreamento poder funcionar.
+     *
+     * `registerForActivityResult` prepara o pedido de permissão e diz o que fazer com a resposta
+     * do usuário (o bloco entre chaves). O pedido em si só aparece quando `.launch(...)` é chamado.
+     * Se o usuário permitir e o roteiro já estava em rota (por exemplo, o serviço foi morto com o
+     * app fechado), o rastreamento é religado na hora. Se negar, aparece um aviso na tela.
      */
     private val launcherPermissoesLocalizacao =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { resultados ->
@@ -90,9 +116,9 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         }
 
     /**
-     * Pede localização em segundo plano ao iniciar o roteiro. Concedida ou não, prossegue: sem
-     * ela o rastreamento ainda funciona com o app em primeiro plano, só perde precisão quando o
-     * motorista troca de app.
+     * Pede a permissão de localização "o tempo todo" (em segundo plano), na hora de iniciar o
+     * roteiro. Permitindo ou não, o roteiro é iniciado: sem ela o rastreamento ainda funciona com
+     * o app aberto, só fica pior quando o motorista troca de app.
      */
     private val launcherPermissaoSegundoPlano =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -100,9 +126,13 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         }
 
     /**
-     * Liga as views do layout inflado (o `Fragment(R.layout...)` do construtor já infla, aqui só
-     * resta buscar os ids), prepara o mapa embutido (SupportMapFragment) de forma assíncrona e
-     * começa a observar o [estado][RoteiroViewModel.estado] da ViewModel.
+     * Chamado pelo Android logo depois que a tela do fragment foi montada (o
+     * `Fragment(R.layout...)` do cabeçalho da classe já transformou o XML em tela; aqui só falta
+     * encontrar os componentes pelo id).
+     *
+     * Também: liga os botões, pede o mapa do Google (ele carrega "por fora" e avisa em
+     * [onMapReady]), começa a observar o ViewModel, pede as permissões e liga o "despertador" que
+     * atualiza o mapa.
      */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -129,7 +159,11 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         handlerAtualizacaoMapa.postDelayed(atualizadorDeMapa, INTERVALO_ATUALIZACAO_MAPA_MS)
     }
 
-    /** Recarrega o roteiro e reavalia a isenção de bateria sempre que a aba volta a ficar visível. */
+    /**
+     * Chamado pelo Android toda vez que a aba volta a aparecer na frente (inclusive na primeira
+     * vez). Recarrega o roteiro e confere de novo a otimização de bateria (o motorista pode ter
+     * acabado de mudar essa configuração e voltado para o app).
+     */
     override fun onResume() {
         super.onResume()
         val uid = AutenticacaoRepositorio.usuarioAtual?.uid ?: return
@@ -138,16 +172,20 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
     }
 
     /**
-     * Callback do `SupportMapFragment` chamado quando o Google Maps termina de carregar de forma
-     * assíncrona. Antes disso o mapa não existe, então [desenharTrajeto] não pode ser chamado —
-     * por isso o trajeto só é desenhado aqui e nas atualizações de estado seguintes.
+     * Chamado quando o mapa do Google termina de carregar (ele carrega "por fora", sem travar a
+     * tela). Antes disso não dá para desenhar nada; por isso o trajeto é desenhado aqui e, depois,
+     * a cada atualização do estado.
      */
     override fun onMapReady(googleMap: GoogleMap) {
         mapa = googleMap
         desenharTrajeto(estadoAtual)
     }
 
-    /** Solta a referência do mapa e o adapter da lista; a view do fragment está sendo destruída. */
+    /**
+     * Chamado pelo Android quando a tela do fragment vai ser destruída (por exemplo, ao trocar de
+     * aba). Libera o que foi criado em [onViewCreated]: desliga o "despertador" do mapa e solta as
+     * referências do mapa e da lista.
+     */
     override fun onDestroyView() {
         super.onDestroyView()
         handlerAtualizacaoMapa.removeCallbacks(atualizadorDeMapa)
@@ -156,9 +194,12 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
     }
 
     /**
-     * Redesenha a aba inteira a partir do estado da ViewModel: sem roteiro esconde tudo, com
-     * roteiro mostra a lista de viagens e alterna entre os controles de "planejando" (botão
-     * iniciar) e "em rota" (mapa, botão encerrar, aviso de bateria).
+     * Redesenha a aba inteira a partir do estado do ViewModel.
+     *
+     * Sem roteiro: esconde tudo e mostra o aviso. Com roteiro: mostra a lista de viagens e alterna
+     * entre os controles de "planejando" (botão Iniciar) e "em rota" (mapa, botão Encerrar, aviso
+     * de bateria). Os botões ficam desligados enquanto uma operação está em andamento ou quando a
+     * regra não permite (por exemplo, encerrar com viagem pendente).
      */
     private fun exibirEstado(estado: RoteiroUiState) {
         estadoAtual = estado
@@ -209,7 +250,11 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         }
     }
 
-    /** Desenha a Polyline do trajeto percorrido até agora (só faz sentido com o roteiro em rota). */
+    /**
+     * Desenha no mapa a linha do caminho percorrido até agora (uma "Polyline": uma linha que liga
+     * vários pontos) e ajusta a câmera para mostrar o trajeto inteiro. Com um ponto só, apenas
+     * centraliza nele. Só faz algo com o roteiro em rota e o mapa já carregado.
+     */
     private fun desenharTrajeto(estado: RoteiroUiState) {
         val mapaAtual = mapa ?: return
         mapaAtual.clear()
@@ -225,7 +270,11 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         }
     }
 
-    /** Confirma com o motorista antes de iniciar o roteiro (liga o GPS), usando AlertDialog. */
+    /**
+     * Mostra uma caixa de confirmação (`AlertDialog`) antes de iniciar o roteiro, porque iniciar
+     * liga o GPS e não dá mais para mexer nas viagens. Se o motorista confirmar, segue para
+     * [iniciarRoteiroComPermissoes].
+     */
     private fun confirmarIniciarRoteiro() {
         AlertDialog.Builder(requireContext())
             .setTitle(R.string.roteiro_confirmar_iniciar)
@@ -235,10 +284,12 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
     }
 
     /**
-     * Sem localização concedida não adianta nem tentar (o serviço se mataria sozinho ao checar a
-     * permissão) — mostra o aviso e não inicia nada. Com localização mas sem segundo plano, pede
-     * segundo plano antes de iniciar (o callback do launcher chama iniciarRoteiro independente da
-     * resposta). Com tudo concedido, inicia direto.
+     * Confere as permissões antes de iniciar o roteiro:
+     * - sem permissão de localização: mostra o aviso e não inicia nada (o serviço de GPS se
+     *   desligaria sozinho mesmo);
+     * - com localização, mas sem "o tempo todo": pede essa permissão primeiro (o roteiro é
+     *   iniciado depois da resposta, qualquer que seja);
+     * - com tudo permitido: inicia direto.
      */
     private fun iniciarRoteiroComPermissoes() {
         val temLocalizacao = ContextCompat.checkSelfPermission(
@@ -261,7 +312,10 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         }
     }
 
-    /** Confirma com o motorista antes de encerrar o roteiro (desliga o GPS), usando AlertDialog. */
+    /**
+     * Mostra uma caixa de confirmação antes de encerrar o roteiro (encerrar desliga o GPS e
+     * calcula os km). Se o motorista confirmar, pede ao ViewModel para encerrar.
+     */
     private fun confirmarEncerrarRoteiro() {
         AlertDialog.Builder(requireContext())
             .setTitle(R.string.roteiro_confirmar_encerrar)
@@ -270,6 +324,7 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
             .show()
     }
 
+    /** Mostra na tela o aviso de que, sem a permissão de localização, o roteiro não pode rastrear. */
     private fun mostrarAvisoPermissaoNegada() {
         textAvisoPermissao.apply {
             text = getString(R.string.andamento_permissao_negada)
@@ -278,9 +333,9 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
     }
 
     /**
-     * Pede localização fina e aproximada assim que a aba abre (se ainda não concedidas), e no
-     * Android 13+ pede também a permissão de notificações — exigida ali para mostrar a notificação
-     * fixa do foreground service de rastreamento.
+     * Assim que a aba abre, pede a permissão de localização (precisa e aproximada), se ainda não
+     * foi dada. No Android 13 ou mais novo (`TIRAMISU`), pede junto a permissão de notificações,
+     * que é necessária para mostrar a notificação fixa do serviço de GPS.
      */
     private fun pedirPermissaoDeLocalizacao() {
         val jaTemLocalizacao = ContextCompat.checkSelfPermission(
@@ -299,10 +354,11 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
     }
 
     /**
-     * Chama [RastreamentoService.iniciar] de novo se o roteiro atual estiver EM_ROTA e a
-     * localização estiver concedida — idempotente, seguro chamar sempre. É o que recupera o
-     * rastreamento se o serviço tiver sido morto pelo sistema (bateria, memória) enquanto o app
-     * estava fechado.
+     * Se o roteiro está em rota e há permissão de localização, (re)liga o serviço de GPS.
+     *
+     * Pode ser chamada quantas vezes for preciso: ligar um serviço que já está ligado não causa
+     * problema. É isso que recupera o rastreamento se o Android matou o serviço (por bateria ou
+     * memória) enquanto o app estava fechado.
      */
     private fun reasserirRastreamentoSeEmRota() {
         val roteiroId = estadoAtual.roteiroId ?: return
@@ -316,9 +372,10 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
     }
 
     /**
-     * Mostra o botão de ajustar a otimização de bateria enquanto o roteiro está EM_ROTA e o app
-     * ainda não está isento dela (Android pode matar o serviço de rastreamento pra economizar
-     * bateria). Some fora do EM_ROTA ou quando não há roteiro algum.
+     * Para economizar bateria, o Android pode matar serviços que rodam em segundo plano — inclusive
+     * o de GPS. Esta função mostra o botão "Ajustar bateria" enquanto o roteiro está em rota e o
+     * app ainda não foi liberado dessa economia. O botão abre a tela do sistema onde o motorista
+     * libera o app. Fora de rota (ou sem roteiro), o botão fica escondido.
      */
     private fun verificarOtimizacaoDeBateria() {
         if (estadoAtual.status != StatusRoteiro.EM_ROTA.name || !estadoAtual.temRoteiro) {

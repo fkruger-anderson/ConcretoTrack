@@ -19,42 +19,74 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
-/** Uma viagem do roteiro atual, já com o nome do destinatário resolvido. */
+/**
+ * Uma viagem do roteiro atual, já com o nome do destinatário (que vem do pedido) para mostrar na
+ * lista da aba Roteiro.
+ */
 data class ViagemDoRoteiro(val viagemId: String, val viagem: ViagemRemota, val destinatarioNome: String)
 
-/** Estado exibido por [RoteiroFragment][br.com.anderson.meuprimeiroprojeto.motorista.ui.RoteiroFragment]. */
+/**
+ * O estado da aba Roteiro ([RoteiroFragment][br.com.anderson.meuprimeiroprojeto.motorista.ui.RoteiroFragment]):
+ * tudo o que ela precisa para se desenhar.
+ */
 data class RoteiroUiState(
+    /** `true` depois da primeira carga (antes disso a aba não desenha nada). */
     val carregado: Boolean = false,
+    /** `false` se o motorista não tem roteiro ativo. */
     val temRoteiro: Boolean = false,
     val roteiroId: String? = null,
+    /** Situação do roteiro (nome de `StatusRoteiro`). */
     val status: String = "",
     val viagens: List<ViagemDoRoteiro> = emptyList(),
+    /** Pontos de GPS do trajeto até agora (só com o roteiro em rota). */
     val pontos: List<PontoGps> = emptyList(),
+    /** Se o botão "Iniciar" pode ser tocado. */
     val podeIniciar: Boolean = false,
+    /** Se o botão "Encerrar" pode ser tocado. */
     val podeEncerrar: Boolean = false,
+    /** `true` enquanto o encerramento está em andamento. */
     val carregando: Boolean = false,
+    /** Mensagem para mostrar num Toast, uma vez só. */
     val erro: Evento<String>? = null,
+    /** Aviso de "roteiro encerrado com sucesso", uma vez só. */
     val roteiroEncerrado: Evento<Unit>? = null
 )
 
 /**
- * Estado do roteiro atual do motorista. É [AndroidViewModel] porque precisa do Room (pontos de
- * GPS) e do Context pra chamar o [RastreamentoService].
+ * O "cérebro" da aba Roteiro: carrega o roteiro ativo do motorista e executa as ações dele
+ * (iniciar, marcar entrega, encerrar).
+ *
+ * É um `AndroidViewModel` porque precisa do `Context` da aplicação: para ler os pontos de GPS do
+ * banco local (Room), para ligar e desligar o serviço de GPS e para pegar textos do `strings.xml`.
  */
 class RoteiroViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         // Encerrar precisa de conexão na hora (grava o rateio de km) — sem isso o motorista
         // ficaria esperando pra sempre, então cortamos e mostramos erro genérico.
+        // O tempo máximo de espera é de 10 segundos.
         private const val TEMPO_LIMITE_MS = 10_000L
     }
 
+    // `_estado` é a versão que o ViewModel pode mudar; `estado` é a versão só de leitura da tela.
     private val _estado = MutableLiveData(RoteiroUiState())
+    /** O estado atual da aba; a tela é avisada toda vez que ele muda. */
     val estado: LiveData<RoteiroUiState> = _estado
 
+    // Guardado no carregar() para recarregar a aba depois de cada ação.
     private lateinit var motoristaUid: String
 
-    /** Busca o roteiro ativo do motorista (planejando ou em rota) e, se em rota, os pontos de GPS. */
+    /**
+     * Carrega a aba inteira:
+     * 1. procura o roteiro ativo do motorista (se não houver, publica "sem roteiro" e para);
+     * 2. busca as viagens do roteiro e o nome do destinatário de cada uma;
+     * 3. se o roteiro está em rota, lê os pontos de GPS do banco local para o mapa;
+     * 4. calcula se os botões podem ser usados:
+     *    - "Iniciar": roteiro PLANEJANDO com pelo menos uma viagem ATRIBUIDA;
+     *    - "Encerrar": roteiro EM_ROTA com todas as viagens resolvidas (entregues ou canceladas).
+     *
+     * Erros de internet em cada etapa viram "vazio", para a aba mostrar o que for possível.
+     */
     fun carregar(motoristaUid: String) {
         this.motoristaUid = motoristaUid
         viewModelScope.launch {
@@ -109,10 +141,11 @@ class RoteiroViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
-     * Recarrega só os pontos de GPS do roteiro atual — leitura local no Room, sem Firestore.
-     * Usado para atualizar o trajeto desenhado no mapa periodicamente enquanto o roteiro está em
-     * rota, sem repetir a cada poucos segundos as consultas ao Firestore que [carregar] faz
-     * (roteiro, viagens, pedidos).
+     * Relê só os pontos de GPS do roteiro, direto do banco do celular (sem internet). A aba chama
+     * isto a cada 10 segundos para o trajeto no mapa acompanhar o caminhão, sem repetir as
+     * consultas ao Firestore que o [carregar] faz.
+     *
+     * `copy(pontos = ...)` cria um estado novo igual ao atual, trocando só os pontos.
      */
     fun atualizarPontos() {
         val estado = _estado.value ?: return
@@ -125,10 +158,12 @@ class RoteiroViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
-     * Não espera confirmação do servidor — mesma escrita simples usada em todo o app motorista.
-     * Só as viagens ainda ATRIBUIDA entram no lote: uma viagem que o gerente cancelou depois de
-     * adicionada ao roteiro (ainda PLANEJANDO) já teve seu m³ devolvido ao saldo do pedido — não
-     * pode ser ressuscitada pra EM_ROTA aqui.
+     * Inicia o roteiro: muda a situação no Firestore (sem esperar resposta, funciona sem sinal),
+     * liga o serviço de GPS e recarrega a aba.
+     *
+     * Só as viagens que ainda estão ATRIBUIDA vão para EM_ROTA. Se o gerente cancelou uma viagem
+     * enquanto o roteiro era montado, os m³ dela já voltaram para o pedido — ela não pode
+     * "ressuscitar" aqui.
      */
     fun iniciarRoteiro() {
         val estado = _estado.value ?: return
@@ -142,9 +177,10 @@ class RoteiroViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
-     * Confirma a entrega no servidor (transação — ver [RoteiroRepositorio.marcarEntregue]).
-     * Recarrega o roteiro de qualquer forma: se ficou na fila local, a viagem continua aparecendo
-     * como pendente até o reenvio automático confirmar de verdade.
+     * Marca uma viagem como entregue (ver [RoteiroRepositorio.marcarEntregue]) e recarrega a aba.
+     *
+     * Se a confirmação ficou guardada no celular (sem sinal), mostra um aviso; a viagem continua
+     * aparecendo como pendente até o reenvio automático conseguir.
      */
     fun marcarEntregue(viagemId: String) {
         viewModelScope.launch {
@@ -159,9 +195,16 @@ class RoteiroViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
-     * Calcula o km total (Haversine sobre os pontos do roteiro), busca a distância dedicada de
-     * cada pedido envolvido, grava o rateio e encerra o roteiro. Só deve ser chamado quando
-     * [RoteiroUiState.podeEncerrar] for true (todas as viagens já resolvidas).
+     * Encerra o roteiro. Só deve ser chamado quando [RoteiroUiState.podeEncerrar] for `true`.
+     *
+     * Passo a passo (tudo com no máximo 10 segundos de espera):
+     * 1. busca as viagens do roteiro;
+     * 2. busca a distância dedicada de cada pedido envolvido (sem repetir pedidos: `distinct`);
+     * 3. calcula os km rodados a partir dos pontos de GPS do celular;
+     * 4. manda o repositório dividir os km e fechar o roteiro.
+     * Depois desliga o serviço de GPS, avisa a tela e recarrega.
+     *
+     * Precisa de internet: se não houver, mostra "sem conexão" e o motorista pode tentar de novo.
      */
     fun encerrarRoteiro() {
         val roteiroId = _estado.value?.roteiroId ?: return

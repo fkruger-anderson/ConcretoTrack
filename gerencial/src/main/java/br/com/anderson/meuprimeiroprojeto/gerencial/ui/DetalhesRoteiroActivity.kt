@@ -24,19 +24,27 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** Detalhe de um roteiro: mapa com o trajeto inteiro e a tabela de rateio de km por pedido. */
+/**
+ * A tela de detalhe de um roteiro: um mapa com o trajeto inteiro que o caminhão fez e a tabela de
+ * "rateio" — como os km rodados foram divididos entre os pedidos que ele levou.
+ *
+ * `OnMapReadyCallback` no cabeçalho quer dizer que esta classe sabe responder quando o mapa do
+ * Google termina de carregar ([onMapReady]).
+ */
 class DetalhesRoteiroActivity : AppCompatActivity(), OnMapReadyCallback {
 
     companion object {
-        /** Chave do Intent extra: id do roteiro a ser mostrado. */
+        /** Nome do "extra" do Intent que leva o id do roteiro a mostrar. */
         const val EXTRA_ROTEIRO_ID = "roteiro_id"
-        /** Chave do Intent extra, opcional: viagem a destacar na tabela (quando veio de um clique específico). */
+        /** Nome do "extra" (opcional) com a viagem a destacar na tabela — a que o gerente tocou. */
         const val EXTRA_VIAGEM_DESTACADA_ID = "viagem_destacada_id"
+        // Espaço (em pixels) deixado nas bordas ao enquadrar o trajeto no mapa.
         private const val PADDING_LIMITES_PX = 120
     }
 
     private val viewModel: DetalhesRoteiroViewModel by viewModels()
 
+    // O mapa só existe depois que termina de carregar; até lá fica null.
     private var mapa: GoogleMap? = null
     private lateinit var roteiroId: String
     private lateinit var textSemPontos: TextView
@@ -45,12 +53,13 @@ class DetalhesRoteiroActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var textPeriodo: TextView
     private lateinit var textKmTotal: TextView
     private lateinit var recyclerRateio: RecyclerView
+    // Formato de data e hora, por exemplo "21/09/2026 14:35".
     private val formatoData = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.forLanguageTag("pt-BR"))
 
     /**
-     * Lê o roteiro (e, opcionalmente, a viagem a destacar) recebidos por Intent, liga as Views e
-     * a RecyclerView da tabela de rateio, pede o mapa assíncrono ao SupportMapFragment e manda a
-     * ViewModel carregar os dados do roteiro.
+     * Chamado pelo Android quando a tela é criada. Lê o id do roteiro que veio no Intent (sem ele a
+     * tela fecha) e, se veio, a viagem a destacar. Liga os componentes e a lista da tabela, pede o
+     * mapa do Google (que carrega "por fora" e avisa em [onMapReady]) e manda o ViewModel carregar.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,9 +90,8 @@ class DetalhesRoteiroActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     /**
-     * Callback assíncrono do SupportMapFragment, chamado quando o Google Maps termina de carregar.
-     * Guarda a referência do mapa e reexibe o estado atual, caso a ViewModel já tenha entregue os
-     * dados antes do mapa ficar pronto (senão essa primeira exibição passaria batida).
+     * Chamado quando o mapa do Google termina de carregar. Guarda o mapa e redesenha o estado atual:
+     * se os dados chegaram antes do mapa ficar pronto, o trajeto ainda não tinha sido desenhado.
      */
     override fun onMapReady(googleMap: GoogleMap) {
         mapa = googleMap
@@ -91,9 +99,11 @@ class DetalhesRoteiroActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     /**
-     * Reflete o [DetalhesRoteiroUiState] atual nas Views: textos de motorista, caminhão, período
-     * e km total, a tabela de rateio (via [ItemRateioAdapter]) e, se o mapa já estiver pronto, o
-     * trajeto (polyline) com marcadores de início/fim e a câmera enquadrando todos os pontos.
+     * Desenha o estado atual:
+     * - textos de motorista, caminhão, período (início, e fim se já encerrado) e km total;
+     * - a tabela de rateio (pelo [ItemRateioAdapter]);
+     * - se o mapa já carregou: a linha do trajeto (Polyline), um marcador verde no início e um
+     *   vermelho no fim, e a câmera enquadrando o trajeto todo. Sem pontos, mostra um aviso.
      */
     private fun exibirEstado(estado: DetalhesRoteiroUiState) {
         if (!estado.carregado) return

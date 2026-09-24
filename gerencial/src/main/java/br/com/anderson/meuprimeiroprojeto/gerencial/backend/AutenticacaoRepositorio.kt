@@ -8,32 +8,49 @@ import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
 
 /**
- * Login do gerente com Firebase Auth; o perfil (nome) fica no Firestore. Não existe
- * autocadastro — um gerente só é criado por outro gerente já logado (ver
- * [cadastrarNovoGerente]).
+ * Cuida do login do gerente e do cadastro de novos gerentes.
+ *
+ * O login (email e senha) é feito pelo Firebase Auth, um serviço do Google que guarda as contas e
+ * senhas com segurança. O perfil (nome) fica no Firestore, na coleção `gerentes`.
+ *
+ * Ninguém se cadastra sozinho como gerente: um gerente novo só é criado por outro gerente que já
+ * está logado (ver [cadastrarNovoGerente]).
+ *
+ * "Repositório" é a classe que busca e grava dados; as telas nunca falam com o Firebase direto.
+ * É um `object`: só existe uma cópia, usada direto pelo nome.
  */
 object AutenticacaoRepositorio {
 
     // Nome de uma segunda instância do Firebase, só para cadastrar outro gerente estando logado.
     private const val APP_SECUNDARIO = "CadastroGerente"
 
+    // O `get()` faz o Kotlin buscar o Firebase toda vez que o campo é usado.
     private val auth get() = Firebase.auth
     private val db get() = Firebase.firestore
 
-    /** Usuário do Firebase Auth logado no momento, ou null se ninguém estiver logado. */
+    /**
+     * O gerente logado agora, ou `null` se ninguém estiver logado. O Firebase Auth lembra o login
+     * mesmo depois de fechar o app.
+     */
     val usuarioAtual: FirebaseUser?
         get() = auth.currentUser
 
     /**
-     * Cadastra outro gerente a partir da aba Configurações, com o gerente atual já logado.
-     * Mesmo raciocínio do [MotoristaRepositorio.cadastrar]: usa uma instância secundária do
-     * Firebase para não substituir a sessão de quem está criando a conta.
+     * Cria a conta de um gerente novo, a partir da aba Configurações, sem deslogar quem está
+     * cadastrando.
      *
-     * Diferente do motorista: a regra de segurança de `gerentes/{id}` só permite que o próprio
-     * dono escreva o próprio documento (motorista é gerenciado pelo gerente; gerente não).
-     * Por isso a gravação do perfil usa a instância secundária (ainda autenticada como o
-     * gerente novo) em vez da principal — se gravássemos pela sessão de quem está cadastrando,
-     * a escrita seria feita com o uid errado e a regra rejeitaria.
+     * O problema: no Firebase, criar uma conta faz login automático com ela. Se isso acontecesse na
+     * conexão principal do app, o gerente que está cadastrando seria "trocado" pelo novo. A solução
+     * é abrir uma SEGUNDA conexão com o Firebase (uma "instância secundária", com o nome
+     * [APP_SECUNDARIO]), criar a conta nela e depois deslogar dessa segunda conexão. A conexão
+     * principal nem fica sabendo.
+     *
+     * Detalhe: as regras de segurança do Firestore só deixam cada gerente gravar o PRÓPRIO
+     * documento em `gerentes`. Por isso o perfil é gravado pela segunda conexão, que está logada
+     * como o gerente novo; pela conexão principal, a gravação seria recusada.
+     *
+     * O `try/catch` no começo reaproveita a segunda conexão se ela já tiver sido aberta antes
+     * (abrir duas vezes com o mesmo nome daria erro).
      */
     suspend fun cadastrarNovoGerente(nome: String, email: String, senha: String) {
         val appPrincipal = FirebaseApp.getInstance()
@@ -54,18 +71,21 @@ object AutenticacaoRepositorio {
         authSecundario.signOut()
     }
 
-    /** Login do gerente com email/senha já cadastrados. */
+    /**
+     * Faz o login do gerente e devolve o usuário logado. Se o email ou a senha estiverem errados, o
+     * Firebase lança um erro, que o `LoginViewModel` transforma em mensagem.
+     */
     suspend fun entrar(email: String, senha: String): FirebaseUser {
         val resultado = auth.signInWithEmailAndPassword(email, senha).aguardar()
         return resultado.user ?: error("Não foi possível entrar")
     }
 
-    /** Busca o perfil (nome) do gerente pelo uid, para exibir na tela depois do login. */
+    /** Busca o perfil (nome) do gerente no Firestore; devolve `null` se não existir. */
     suspend fun buscarPerfil(uid: String): GerentePerfil? {
         val documento = db.collection("gerentes").document(uid).get().aguardar()
         return documento.toObject(GerentePerfil::class.java)
     }
 
-    /** Encerra a sessão do gerente logado. */
+    /** Faz o logout: o Firebase Auth esquece o gerente que estava logado neste celular. */
     fun sair() = auth.signOut()
 }
