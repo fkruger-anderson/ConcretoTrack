@@ -25,6 +25,7 @@ object SessaoMotorista {
     // (escrever "nome" num lugar e "Nome" em outro seriam duas chaves diferentes).
     private const val PREFS_NOME = "sessao_motorista"
     private const val CHAVE_NOME = "nome"
+    private const val CHAVE_ROTEIRO_EM_ROTA = "roteiro_em_rota"
 
     // O arquivo de preferências, aberto em inicializar(). `lateinit` = preenchido depois.
     private lateinit var prefs: SharedPreferences
@@ -50,6 +51,28 @@ object SessaoMotorista {
     /** Devolve o nome guardado, ou texto vazio se nada foi guardado ainda. */
     fun nomeMotorista(): String =
         prefs.getString(CHAVE_NOME, "") ?: ""
+
+    /**
+     * Guarda o id do roteiro que está sendo rastreado agora. Quem grava é o `RastreamentoService`
+     * ao ligar o GPS. Se o Android matar o serviço e recriá-lo sozinho, ele chega sem saber qual
+     * roteiro rastrear — e lê daqui.
+     */
+    fun salvarRoteiroEmRota(roteiroId: String) {
+        prefs.edit()
+            .putString(CHAVE_ROTEIRO_EM_ROTA, roteiroId)
+            .apply()
+    }
+
+    /** Devolve o id do roteiro sendo rastreado, ou null se nenhum. */
+    fun roteiroEmRota(): String? =
+        prefs.getString(CHAVE_ROTEIRO_EM_ROTA, null)
+
+    /** Esquece o roteiro rastreado. Chamada quando o roteiro é encerrado. */
+    fun limparRoteiroEmRota() {
+        prefs.edit()
+            .remove(CHAVE_ROTEIRO_EM_ROTA)
+            .apply()
+    }
 
     /** Apaga tudo o que foi guardado, na hora do logout (o logout no Firebase Auth é feito à parte). */
     fun sair() {

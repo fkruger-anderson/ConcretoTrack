@@ -21,6 +21,7 @@ import br.com.anderson.meuprimeiroprojeto.motorista.backend.RoteiroRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.aguardar
 import br.com.anderson.meuprimeiroprojeto.motorista.db.AppDatabase
 import br.com.anderson.meuprimeiroprojeto.motorista.db.PontoGps
+import br.com.anderson.meuprimeiroprojeto.motorista.sessao.SessaoMotorista
 import br.com.anderson.meuprimeiroprojeto.motorista.ui.MotoristaHomeActivity
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
@@ -126,19 +127,25 @@ class RastreamentoService : Service() {
      *   (`stopSelf`). É o caminho que para o serviço quando ele não é mais necessário.
      * - Ação INICIAR: guarda o roteiro, mostra a notificação fixa (`startForeground`) e liga o GPS.
      *
-     * O valor devolvido diz ao Android o que fazer se ele precisar matar o serviço por falta de
-     * memória. `START_STICKY` = "tente recriar o serviço depois". Nesse caso o Intent chega vazio
-     * e o id do roteiro se perde; quem recupera é a aba Roteiro, que chama [iniciar] de novo quando
-     * é aberta com um roteiro em rota. `START_NOT_STICKY` = "não precisa recriar".
+     * O valor devolvido diz ao Android o que fazer se ele precisar matar o serviço (por falta de
+     * memória ou economia de bateria). `START_STICKY` = "tente recriar o serviço depois". Nesse
+     * caso o Intent chega vazio (null) e o id do roteiro viria perdido — por isso ele também fica
+     * guardado nas SharedPreferences ([SessaoMotorista.roteiroEmRota]), e o serviço religa o GPS
+     * sozinho, sem esperar o motorista abrir o app. `START_NOT_STICKY` = "não precisa recriar".
      */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Intent null = o próprio Android recriou o serviço; o roteiro vem das preferências.
         val roteiroId = intent?.getStringExtra(EXTRA_ROTEIRO_ID)
+            ?: if (intent == null) SessaoMotorista.roteiroEmRota() else null
         if (roteiroId.isNullOrBlank()) {
             if (roteiroAtivo == null) stopSelf()
             return START_NOT_STICKY
         }
 
-        if (intent.action == ACTION_ENCERRAR) {
+        if (intent?.action == ACTION_ENCERRAR) {
+            // Esquece o roteiro mesmo que o serviço não estivesse rodando, senão um reinício
+            // futuro religaria o GPS de um roteiro já encerrado.
+            if (SessaoMotorista.roteiroEmRota() == roteiroId) SessaoMotorista.limparRoteiroEmRota()
             if (roteiroAtivo == roteiroId) {
                 roteiroAtivo = null
                 callbackLocalizacao?.let { clienteLocalizacao.removeLocationUpdates(it) }
@@ -148,6 +155,7 @@ class RastreamentoService : Service() {
         }
 
         roteiroAtivo = roteiroId
+        SessaoMotorista.salvarRoteiroEmRota(roteiroId)
         criarCanalDeNotificacao()
         startForeground(NOTIFICACAO_ID, criarNotificacao(), ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
         iniciarAtualizacoesDeLocalizacao()
@@ -180,22 +188,30 @@ class RastreamentoService : Service() {
         val pedido = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, INTERVALO_ATUALIZACAO_MS).build()
         val callback = object : LocationCallback() {
             /**
-             * Chamada pelo Android a cada posição nova. Grava o ponto no Room e depois cuida do
+             * Chamada pelo Android a cada posição nova. Grava os pontos no Room e depois cuida do
              * Firestore (posição atual e filas offline).
+             *
+             * Com a tela apagada, o Android economiza bateria juntando várias posições e entregando
+             * todas de uma vez (um "lote"). Por isso percorremos a lista inteira
+             * (`resultado.locations`), e não só a última — senão o trajeto fica com buracos. O
+             * horário de cada ponto é o da medição (`localizacao.time`), não o da entrega do lote.
              */
             override fun onLocationResult(resultado: LocationResult) {
-                val localizacao = resultado.lastLocation ?: return
-                val horario = System.currentTimeMillis()
+                val localizacoes = resultado.locations
+                val ultima = localizacoes.lastOrNull() ?: return
                 escopo.launch {
-                    AppDatabase.obter().pontoGpsDao().inserir(
-                        PontoGps(
-                            roteiroId = alvoRoteiroId,
-                            latitude = localizacao.latitude,
-                            longitude = localizacao.longitude,
-                            horario = horario
+                    val dao = AppDatabase.obter().pontoGpsDao()
+                    for (localizacao in localizacoes) {
+                        dao.inserir(
+                            PontoGps(
+                                roteiroId = alvoRoteiroId,
+                                latitude = localizacao.latitude,
+                                longitude = localizacao.longitude,
+                                horario = localizacao.time
+                            )
                         )
-                    )
-                    atualizarPosicaoAtual(alvoRoteiroId, localizacao.latitude, localizacao.longitude, horario)
+                    }
+                    atualizarPosicaoAtual(alvoRoteiroId, ultima.latitude, ultima.longitude, ultima.time)
                     sincronizarPontosPendentes()
                     sincronizarEntregasPendentes()
                 }
