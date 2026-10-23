@@ -2,9 +2,12 @@ package br.com.anderson.meuprimeiroprojeto.motorista.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.method.HideReturnsTransformationMethod
+import android.text.method.PasswordTransformationMethod
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.viewModels
@@ -37,6 +40,11 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var botaoEntrar: Button
     private lateinit var progresso: ProgressBar
     private lateinit var textErro: TextView
+    private lateinit var botaoMostrarSenha: ImageButton
+
+    // Se a senha está aparecendo em texto normal (true) ou escondida com bolinhas (false).
+    // É salvo no Bundle em onSaveInstanceState para não se perder ao girar o celular.
+    private var senhaVisivel = false
 
     /**
      * Chamado pelo Android quando a tela é criada. É onde a tela é montada.
@@ -61,6 +69,14 @@ class LoginActivity : AppCompatActivity() {
         botaoEntrar = findViewById(R.id.botaoEntrar)
         progresso = findViewById(R.id.progresso)
         textErro = findViewById(R.id.textErro)
+        botaoMostrarSenha = findViewById(R.id.botaoMostrarSenha)
+
+        senhaVisivel = savedInstanceState?.getBoolean(CHAVE_SENHA_VISIVEL) ?: false
+        aplicarVisibilidadeDaSenha()
+        botaoMostrarSenha.setOnClickListener {
+            senhaVisivel = !senhaVisivel
+            aplicarVisibilidadeDaSenha()
+        }
 
         botaoEntrar.setOnClickListener {
             viewModel.entrar(editEmail.text.toString().trim(), editSenha.text.toString())
@@ -77,6 +93,11 @@ class LoginActivity : AppCompatActivity() {
     private fun exibirEstado(estado: LoginUiState) {
         progresso.visibility = if (estado.carregando) View.VISIBLE else View.GONE
         botaoEntrar.isEnabled = !estado.carregando
+        // Enquanto carrega, o texto do botão some e a rodinha aparece no lugar dele. O fundo
+        // continua vermelho mesmo desabilitado (backgroundTint fixo no layout).
+        botaoEntrar.text = if (estado.carregando) "" else getString(R.string.login_botao_entrar)
+        botaoEntrar.contentDescription =
+            if (estado.carregando) getString(R.string.login_entrando) else null
 
         val mensagemErro = when (estado.erro) {
             LoginErro.CAMPOS_VAZIOS -> getString(R.string.login_erro_campos_vazios)
@@ -98,5 +119,39 @@ class LoginActivity : AppCompatActivity() {
     private fun abrirListaDeViagens() {
         startActivity(Intent(this, MotoristaHomeActivity::class.java))
         finish()
+    }
+
+    /**
+     * Guarda no Bundle se a senha estava visível, para restaurar quando a tela for recriada
+     * (por exemplo, ao girar o celular).
+     */
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(CHAVE_SENHA_VISIVEL, senhaVisivel)
+    }
+
+    /**
+     * Mostra ou esconde a senha conforme [senhaVisivel] e troca o ícone do olho. O cursor é
+     * mantido na mesma posição, senão ele pularia para o início do campo a cada toque.
+     */
+    private fun aplicarVisibilidadeDaSenha() {
+        val posicaoCursor = editSenha.selectionEnd
+        editSenha.transformationMethod = if (senhaVisivel) {
+            HideReturnsTransformationMethod.getInstance()
+        } else {
+            PasswordTransformationMethod.getInstance()
+        }
+        if (posicaoCursor >= 0) editSenha.setSelection(posicaoCursor)
+
+        botaoMostrarSenha.setImageResource(
+            if (senhaVisivel) R.drawable.ic_olho_fechado else R.drawable.ic_olho
+        )
+        botaoMostrarSenha.contentDescription = getString(
+            if (senhaVisivel) R.string.login_ocultar_senha else R.string.login_mostrar_senha
+        )
+    }
+
+    companion object {
+        private const val CHAVE_SENHA_VISIVEL = "senha_visivel"
     }
 }
