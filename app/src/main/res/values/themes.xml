@@ -1,9 +1,48 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.MeuPrimeiroProjeto" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">@color/wa_vermelho</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/wa_vermelho_claro</item>
+        <item name="colorOnPrimaryContainer">@color/wa_vermelho_escuro</item>
+        <item name="colorSecondary">@color/wa_grafite</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="materialButtonStyle">@style/Widget.WA.Button</item>
+        <item name="editTextStyle">@style/Widget.WA.EditText</item>
+        <item name="android:editTextStyle">@style/Widget.WA.EditText</item>
+        <item name="autoCompleteTextViewStyle">@style/Widget.WA.AutoCompleteTextView</item>
+        <item name="android:autoCompleteTextViewStyle">@style/Widget.WA.AutoCompleteTextView</item>
+        <item name="spinnerStyle">@style/Widget.WA.Spinner</item>
+        <item name="android:spinnerStyle">@style/Widget.WA.Spinner</item>
     </style>
 
     <style name="Theme.MeuPrimeiroProjeto" parent="Base.Theme.MeuPrimeiroProjeto" />
+
+    <!-- Botão padrão do app: fundo vermelho (colorPrimary) e mais alto, deixando as pontas mais arredondadas -->
+    <style name="Widget.WA.Button" parent="Widget.Material3.Button">
+        <item name="android:minHeight">56dp</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <!-- Campos de texto com o mesmo formato dos botões -->
+    <style name="Widget.WA.EditText" parent="Widget.AppCompat.EditText">
+        <item name="android:background">@drawable/bg_campo</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="android:paddingStart">24dp</item>
+        <item name="android:paddingEnd">24dp</item>
+    </style>
+
+    <style name="Widget.WA.AutoCompleteTextView" parent="Widget.AppCompat.AutoCompleteTextView">
+        <item name="android:background">@drawable/bg_campo</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="android:paddingStart">24dp</item>
+        <item name="android:paddingEnd">24dp</item>
+    </style>
+
+    <style name="Widget.WA.Spinner" parent="Widget.AppCompat.Spinner">
+        <item name="android:background">@drawable/bg_spinner</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="android:paddingStart">8dp</item>
+        <item name="android:paddingEnd">48dp</item>
+    </style>
 </resources>

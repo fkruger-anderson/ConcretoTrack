@@ -1,7 +1,18 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.MeuPrimeiroProjeto" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+        <item name="colorPrimary">@color/wa_vermelho</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/wa_vermelho_claro</item>
+        <item name="colorOnPrimaryContainer">@color/wa_vermelho_escuro</item>
+        <item name="colorSecondary">@color/wa_grafite</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="materialButtonStyle">@style/Widget.WA.Button</item>
+        <item name="editTextStyle">@style/Widget.WA.EditText</item>
+        <item name="android:editTextStyle">@style/Widget.WA.EditText</item>
+        <item name="autoCompleteTextViewStyle">@style/Widget.WA.AutoCompleteTextView</item>
+        <item name="android:autoCompleteTextViewStyle">@style/Widget.WA.AutoCompleteTextView</item>
+        <item name="spinnerStyle">@style/Widget.WA.Spinner</item>
+        <item name="android:spinnerStyle">@style/Widget.WA.Spinner</item>
     </style>
 </resources>

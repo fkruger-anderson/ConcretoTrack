@@ -4,4 +4,12 @@
     <color name="white">#FFFFFFFF</color>
     <!-- Fundo amarelo claro da linha em destaque na tabela de rateio (detalhe do roteiro). -->
     <color name="rateio_destaque">#FFFFF3CD</color>
+    <!-- Paleta WA, a partir da logo -->
+    <color name="wa_vermelho">#FFD24943</color>
+    <color name="wa_vermelho_escuro">#FFA83A35</color>
+    <color name="wa_vermelho_claro">#FFFFDAD6</color>
+    <color name="wa_grafite">#FF2B2B2B</color>
+    <color name="wa_borda">#FF8E8E8E</color>
+    <color name="wa_borda_desabilitada">#FFD0D0D0</color>
+    <color name="erro">#B00020</color>
 </resources>

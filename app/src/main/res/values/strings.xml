@@ -1,10 +1,15 @@
 <resources>
     <string name="app_name">Motorista - Concreto</string>
 
-    <string name="login_titulo">Login do motorista</string>
+    <string name="login_titulo">Login</string>
+    <string name="login_logo_descricao">Logo WA Motorista</string>
     <string name="login_hint_email">Email</string>
     <string name="login_hint_senha">Senha</string>
     <string name="login_botao_entrar">Entrar</string>
+    <string name="login_mostrar_senha">Mostrar senha</string>
+    <string name="login_ocultar_senha">Ocultar senha</string>
+    <string name="login_entrando">Entrando</string>
+    <string name="login_contexto">Seu acesso é criado pelo gerente</string>
     <string name="login_erro_campos_vazios">Preencha email e senha</string>
     <string name="login_erro_credenciais">Email ou senha incorretos</string>
     <string name="login_erro_generico">Não foi possível entrar. Verifique sua conexão e tente de novo</string>
