@@ -31,10 +31,9 @@ class NovoPedidoViewModelTest {
         numero: String = "120",
         bairro: String = "Centro",
         cidade: String = "Presidente Getúlio",
-        uf: String = "SC",
         quantidade: String = "10",
         distancia: String = "15"
-    ) = viewModel.salvar(documento, nome, cep, rua, numero, bairro, cidade, uf, quantidade, distancia, null)
+    ) = viewModel.salvar(documento, nome, cep, rua, numero, bairro, cidade, quantidade, distancia, null)
 
     /** O estado atual (o `!!` diz ao Kotlin "tenho certeza que não é nulo aqui"). */
     private fun estado() = viewModel.estado.value!!
@@ -67,17 +66,17 @@ class NovoPedidoViewModelTest {
         assertTrue(estado().erroEndereco)
     }
 
-    /** UF que não existe é recusada. */
+    /** Cidade vazia é recusada. */
     @Test
-    fun ufInexistenteMarcaErroNoEndereco() {
-        salvar(uf = "XX")
+    fun semCidadeMarcaErroNoEndereco() {
+        salvar(cidade = "")
         assertTrue(estado().erroEndereco)
     }
 
-    /** UF digitada em minúsculas é aceita. */
+    /** Endereço completo, sem UF, é aceito (a UF é sempre SC). */
     @Test
-    fun ufMinusculaNaoMarcaErro() {
-        salvar(uf = "sc")
+    fun enderecoSemUfNaoMarcaErro() {
+        salvar()
         assertFalse(estado().erroEndereco)
     }
 

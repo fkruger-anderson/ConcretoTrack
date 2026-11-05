@@ -45,15 +45,6 @@
 
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/textSemPontos"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="12dp"
-        android:gravity="center"
-        android:text="@string/rota_sem_pontos"
-        android:visibility="gone" />
-
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -64,6 +55,20 @@
             android:name="com.google.android.gms.maps.SupportMapFragment"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
+
+        <TextView
+            android:id="@+id/textSemPontos"
+            style="@style/Widget.WA.MensagemVazia"
+            android:drawableTop="@drawable/ilustracao_rota_vazio"
+            android:drawablePadding="8dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_margin="32dp"
+            android:background="@drawable/bg_aviso_mapa"
+            android:elevation="4dp"
+            android:text="@string/rota_sem_pontos"
+            android:visibility="gone" />
 
     </FrameLayout>
 

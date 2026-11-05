@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- "Etiquetas" usadas pela função exibirCarregando para guardar o texto e a cor do botão. -->
+    <item name="tag_texto_original_botao" type="id" />
+    <item name="tag_cor_original_botao" type="id" />
+</resources>

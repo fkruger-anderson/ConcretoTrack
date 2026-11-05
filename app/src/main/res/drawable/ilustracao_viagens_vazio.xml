@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ilustração da lista de viagens vazia (app do motorista): caminhão betoneira visto de lado. No estilo dos ícones preenchidos (Material Symbols), em dois tons de cinza. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="212dp"
+    android:height="120dp"
+    android:viewportWidth="179.8"
+    android:viewportHeight="101.6">
+    <group
+        android:translateX="-5.2"
+        android:translateY="-59.4">
+        <group
+            android:pivotX="78"
+            android:pivotY="96"
+            android:rotation="12"
+            android:translateX="0"
+            android:translateY="0">
+            <path
+                android:fillColor="#FFB9B9B9"
+                android:pathData="M30,86C44,80 52,68 66,68H90C104,68 116,78 124,86Q129,96 124,106C116,114 104,124 90,124H66C52,124 44,112 30,106Z" />
+        </group>
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M33,125V106L14.5,119.5Q11,121.5 9.5,118.5Q8.5,116.5 11,114.5L27,101V90Q27,86 25,82.5L20.5,71Q19,68 16.5,67.5Q15,64 18,63.5H39Q42,64 41,67.5L37.5,80Q37,84 40,86L46,92Q49,95 49.5,99L52,125Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M29,123H177A3,3 0 0,1 180,126V129A3,3 0 0,1 177,132H29A3,3 0 0,1 26,129V126A3,3 0 0,1 29,123Z" />
+        <path
+            android:fillColor="#FFB9B9B9"
+            android:pathData="M130,126V84Q130,78 136,78H156Q162,78 165,84L174,104Q180,106 181,112V126Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M145,85H157Q160,85 161.5,88L168,103H145Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M39,144A13,13 0 1,0 65,144A13,13 0 1,0 39,144Z" />
+        <path
+            android:fillColor="#FFB9B9B9"
+            android:pathData="M47,144A5,5 0 1,0 57,144A5,5 0 1,0 47,144Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M71,144A13,13 0 1,0 97,144A13,13 0 1,0 71,144Z" />
+        <path
+            android:fillColor="#FFB9B9B9"
+            android:pathData="M79,144A5,5 0 1,0 89,144A5,5 0 1,0 79,144Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M145,144A13,13 0 1,0 171,144A13,13 0 1,0 145,144Z" />
+        <path
+            android:fillColor="#FFB9B9B9"
+            android:pathData="M153,144A5,5 0 1,0 163,144A5,5 0 1,0 153,144Z" />
+    </group>
+</vector>

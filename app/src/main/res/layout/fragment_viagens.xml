@@ -28,21 +28,29 @@
             android:text="@string/viagens_sair" />
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/textListaVazia"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="24dp"
-        android:gravity="center"
-        android:text="@string/viagens_lista_vazia"
-        android:visibility="gone" />
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerViagens"
+    <!-- Lista e mensagem de "nenhum resultado" no mesmo espaço: a mensagem fica no centro dele -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:clipToPadding="false"
-        android:padding="8dp" />
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerViagens"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:padding="8dp" />
+
+        <TextView
+            android:id="@+id/textListaVazia"
+            style="@style/Widget.WA.MensagemVazia"
+            android:drawableTop="@drawable/ilustracao_viagens_vazio"
+            android:drawablePadding="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="@string/viagens_lista_vazia"
+            android:visibility="gone" />
+    </FrameLayout>
 
 </LinearLayout>

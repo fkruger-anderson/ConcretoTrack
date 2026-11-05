@@ -15,7 +15,7 @@
     <string name="login_erro_generico">Não foi possível entrar. Verifique sua conexão e tente de novo</string>
 
     <string name="viagens_sair">Sair</string>
-    <string name="viagens_lista_vazia">Nenhuma viagem em aberto no momento</string>
+    <string name="viagens_lista_vazia">Nenhuma viagem em aberto</string>
     <string name="viagens_erro_carregar">Não foi possível carregar suas viagens. Verifique sua conexão</string>
     <string name="viagens_boas_vindas">Bem-vindo, %1$s</string>
     <string name="viagens_item_detalhes_formato">%1$s m³ · caminhão %2$s</string>
@@ -62,4 +62,5 @@
     <string name="erro_sem_conexao_tentar_novo">Sem conexão. Tente de novo</string>
     <string name="erro_sem_conexao_encerrar">Sem conexão. Tente encerrar de novo</string>
     <string name="info_entrega_enfileirada">Sem conexão agora. A confirmação de entrega será enviada automaticamente quando a conexão voltar</string>
+    <string name="carregando">Carregando</string>
 </resources>

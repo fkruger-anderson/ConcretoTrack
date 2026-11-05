@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ilustração da timeline de viagens vazia (detalhes do pedido): linha do tempo sem conteúdo. No estilo dos ícones preenchidos (Material Symbols), em dois tons de cinza. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="113dp"
+    android:height="140dp"
+    android:viewportWidth="601.0"
+    android:viewportHeight="743.0">
+    <group
+        android:translateX="-178.6"
+        android:translateY="-108.5">
+        <path
+            android:fillColor="#FFB9B9B9"
+            android:pathData="M270,200H270A20,20 0 0,1 290,220V740A20,20 0 0,1 270,760H270A20,20 0 0,1 250,740V220A20,20 0 0,1 270,200Z" />
+        <path
+            android:fillColor="#FFB9B9B9"
+            android:pathData="M198,200A72,72 0 1,0 342,200A72,72 0 1,0 198,200Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M240,200A30,30 0 1,0 300,200A30,30 0 1,0 240,200Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M440,160H720A40,40 0 0,1 760,200V200A40,40 0 0,1 720,240H440A40,40 0 0,1 400,200V200A40,40 0 0,1 440,160Z" />
+        <path
+            android:fillColor="#FFB9B9B9"
+            android:pathData="M198,480A72,72 0 1,0 342,480A72,72 0 1,0 198,480Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M240,480A30,30 0 1,0 300,480A30,30 0 1,0 240,480Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M440,440H640A40,40 0 0,1 680,480V480A40,40 0 0,1 640,520H440A40,40 0 0,1 400,480V480A40,40 0 0,1 440,440Z" />
+        <path
+            android:fillColor="#FFB9B9B9"
+            android:pathData="M198,760A72,72 0 1,0 342,760A72,72 0 1,0 198,760Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M240,760A30,30 0 1,0 300,760A30,30 0 1,0 240,760Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M440,720H680A40,40 0 0,1 720,760V760A40,40 0 0,1 680,800H440A40,40 0 0,1 400,760V760A40,40 0 0,1 440,720Z" />
+    </group>
+</vector>

@@ -14,7 +14,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/novo_pedido_titulo"
-            android:textSize="22sp"
+            android:textSize="28sp"
+            android:textStyle="bold"
             android:layout_marginBottom="24dp" />
 
         <EditText
@@ -74,30 +75,14 @@
                 android:inputType="textCapWords" />
         </LinearLayout>
 
-        <LinearLayout
+        <AutoCompleteTextView
+            android:id="@+id/editCidade"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="12dp">
-
-            <EditText
-                android:id="@+id/editCidade"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="2"
-                android:hint="@string/novo_pedido_hint_cidade"
-                android:inputType="textCapWords" />
-
-            <AutoCompleteTextView
-                android:id="@+id/editUf"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:hint="@string/novo_pedido_hint_uf"
-                android:inputType="textCapCharacters"
-                android:maxLength="2" />
-        </LinearLayout>
+            android:layout_marginTop="12dp"
+            android:completionThreshold="1"
+            android:hint="@string/novo_pedido_hint_cidade"
+            android:inputType="textCapWords" />
 
         <EditText
             android:id="@+id/editQuantidadeM3"
@@ -115,26 +100,43 @@
             android:hint="@string/novo_pedido_hint_distancia_km"
             android:inputType="numberDecimal" />
 
-        <Button
+        <TextView
             android:id="@+id/botaoDataEntrega"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="@string/novo_pedido_hint_data_entrega" />
+            android:background="@drawable/bg_campo"
+            android:clickable="true"
+            android:focusable="true"
+            android:minHeight="56dp"
+            android:paddingStart="24dp"
+            android:paddingEnd="20dp"
+            android:gravity="center_vertical"
+            android:hint="@string/novo_pedido_hint_data_entrega"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:drawableEnd="@drawable/ic_calendario"
+            android:drawablePadding="8dp" />
 
-        <Button
-            android:id="@+id/botaoSalvar"
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/novo_pedido_botao_salvar" />
+            android:layout_marginTop="24dp">
 
-        <ProgressBar
-            android:id="@+id/progresso"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:visibility="gone" />
+            <Button
+                android:id="@+id/botaoSalvar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/novo_pedido_botao_salvar" />
+
+            <ProgressBar
+                android:id="@+id/progresso"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="center"
+                android:elevation="10dp"
+                android:indeterminateTint="@color/white"
+                android:visibility="gone" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/textErro"

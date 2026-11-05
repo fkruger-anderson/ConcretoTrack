@@ -12,4 +12,17 @@
     <color name="wa_borda">#FF8E8E8E</color>
     <color name="wa_borda_desabilitada">#FFD0D0D0</color>
     <color name="erro">#B00020</color>
+    <!-- Situação do pedido: fundo claro e texto escuro da mesma cor, para ficar legível -->
+    <color name="status_pendente_fundo">#FFFDDCDA</color>
+    <color name="status_pendente_texto">#FFA8261F</color>
+    <color name="status_em_andamento_fundo">#FFFFF1C2</color>
+    <color name="status_em_andamento_texto">#FF7A5500</color>
+    <color name="status_concluido_fundo">#FFD6F2DE</color>
+    <color name="status_concluido_texto">#FF1B6B34</color>
+    <!-- Timeline de viagens do pedido: tons pastéis para o ponto de cada situação e para a linha -->
+    <color name="timeline_linha">#FFE3E1E6</color>
+    <color name="timeline_atribuida">#FFC9CCD6</color>
+    <color name="timeline_em_rota">#FFF7DA8B</color>
+    <color name="timeline_concluida">#FFA8DDB5</color>
+    <color name="timeline_cancelada">#FFF4AFAA</color>
 </resources>

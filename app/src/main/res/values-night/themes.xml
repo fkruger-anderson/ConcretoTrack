@@ -8,6 +8,7 @@
         <item name="colorSecondary">@color/wa_grafite</item>
         <item name="colorOnSecondary">@color/white</item>
         <item name="materialButtonStyle">@style/Widget.WA.Button</item>
+        <item name="bottomNavigationStyle">@style/Widget.WA.BottomNavigationView</item>
         <item name="editTextStyle">@style/Widget.WA.EditText</item>
         <item name="android:editTextStyle">@style/Widget.WA.EditText</item>
         <item name="autoCompleteTextViewStyle">@style/Widget.WA.AutoCompleteTextView</item>

@@ -1,9 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material Symbols: arrow_drop_down. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
+    android:viewportWidth="960"
+    android:viewportHeight="960">
     <path
         android:fillColor="@color/wa_borda"
-        android:pathData="M7,10l5,5 5,-5z" />
+        android:pathData="M480,600L280,400L680,400L480,600Z" />
 </vector>

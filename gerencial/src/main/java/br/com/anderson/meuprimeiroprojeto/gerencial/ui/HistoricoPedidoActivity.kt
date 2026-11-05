@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.viewModels
@@ -50,6 +51,7 @@ class HistoricoPedidoActivity : AppCompatActivity() {
     private lateinit var textKmTotal: TextView
     private lateinit var botaoDataEntrega: Button
     private lateinit var botaoAtribuirViagem: Button
+    private lateinit var botaoVoltar: ImageButton
     private lateinit var textListaVazia: TextView
     private lateinit var recyclerViagens: RecyclerView
 
@@ -73,6 +75,10 @@ class HistoricoPedidoActivity : AppCompatActivity() {
         textKmTotal = findViewById(R.id.textKmTotal)
         botaoDataEntrega = findViewById(R.id.botaoDataEntrega)
         botaoAtribuirViagem = findViewById(R.id.botaoAtribuirViagem)
+        botaoVoltar = findViewById(R.id.botaoVoltar)
+
+        // Volta para a lista de pedidos: fecha esta tela, como o botão "voltar" do celular.
+        botaoVoltar.setOnClickListener { finish() }
         textListaVazia = findViewById(R.id.textListaVazia)
         recyclerViagens = findViewById(R.id.recyclerViagens)
         recyclerViagens.layoutManager = LinearLayoutManager(this)

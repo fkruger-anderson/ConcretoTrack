@@ -55,19 +55,26 @@
             android:hint="@string/atribuir_hint_m3"
             android:inputType="numberDecimal" />
 
-        <Button
-            android:id="@+id/botaoAtribuir"
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/atribuir_botao" />
+            android:layout_marginTop="24dp">
 
-        <ProgressBar
-            android:id="@+id/progresso"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:visibility="gone" />
+            <Button
+                android:id="@+id/botaoAtribuir"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/atribuir_botao" />
+
+            <ProgressBar
+                android:id="@+id/progresso"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="center"
+                android:elevation="10dp"
+                android:indeterminateTint="@color/white"
+                android:visibility="gone" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/textErro"

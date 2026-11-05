@@ -57,8 +57,7 @@ class CadastroGerenteActivity : AppCompatActivity() {
      * (email já usado, senha fraca...) e, se deu certo, um Toast e o fechamento da tela.
      */
     private fun exibirEstado(estado: CadastroGerenteUiState) {
-        progresso.visibility = if (estado.carregando) View.VISIBLE else View.GONE
-        botaoCriar.isEnabled = !estado.carregando
+        botaoCriar.exibirCarregando(estado.carregando, progresso)
 
         editNome.error = if (estado.erroCampoNome) getString(R.string.cadastro_erro_nome) else null
         editEmail.error = if (estado.erroCampoEmail) getString(R.string.cadastro_erro_email) else null

@@ -13,6 +13,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.view.View
 import android.widget.Button
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -69,8 +70,10 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
     private lateinit var textRoteiroVazio: TextView
     private lateinit var recyclerViagensRoteiro: RecyclerView
     private lateinit var botaoIniciarRoteiro: Button
+    private lateinit var progressoIniciarRoteiro: ProgressBar
     private lateinit var containerMapa: View
     private lateinit var botaoEncerrarRoteiro: Button
+    private lateinit var progressoEncerrarRoteiro: ProgressBar
     private lateinit var textAvisoPermissao: TextView
     private lateinit var botaoAjustarBateria: Button
     private lateinit var textBateria: TextView
@@ -144,8 +147,10 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
         recyclerViagensRoteiro = view.findViewById(R.id.recyclerViagensRoteiro)
         recyclerViagensRoteiro.layoutManager = LinearLayoutManager(requireContext())
         botaoIniciarRoteiro = view.findViewById(R.id.botaoIniciarRoteiro)
+        progressoIniciarRoteiro = view.findViewById(R.id.progressoIniciarRoteiro)
         containerMapa = view.findViewById(R.id.containerMapa)
         botaoEncerrarRoteiro = view.findViewById(R.id.botaoEncerrarRoteiro)
+        progressoEncerrarRoteiro = view.findViewById(R.id.progressoEncerrarRoteiro)
         textAvisoPermissao = view.findViewById(R.id.textAvisoPermissao)
         botaoAjustarBateria = view.findViewById(R.id.botaoAjustarBateria)
         textBateria = view.findViewById(R.id.textBateria)
@@ -215,6 +220,8 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
             botaoIniciarRoteiro.visibility = View.GONE
             containerMapa.visibility = View.GONE
             botaoEncerrarRoteiro.visibility = View.GONE
+            progressoIniciarRoteiro.visibility = View.GONE
+            progressoEncerrarRoteiro.visibility = View.GONE
             botaoAjustarBateria.visibility = View.GONE
             textBateria.visibility = View.GONE
             return
@@ -228,10 +235,10 @@ class RoteiroFragment : Fragment(R.layout.fragment_roteiro), OnMapReadyCallback 
 
         val emRota = estado.status == StatusRoteiro.EM_ROTA.name
         botaoIniciarRoteiro.visibility = if (!emRota) View.VISIBLE else View.GONE
-        botaoIniciarRoteiro.isEnabled = estado.podeIniciar && !estado.carregando
+        botaoIniciarRoteiro.exibirCarregando(estado.carregando, progressoIniciarRoteiro, habilitado = estado.podeIniciar)
         containerMapa.visibility = if (emRota) View.VISIBLE else View.GONE
         botaoEncerrarRoteiro.visibility = if (emRota) View.VISIBLE else View.GONE
-        botaoEncerrarRoteiro.isEnabled = estado.podeEncerrar && !estado.carregando
+        botaoEncerrarRoteiro.exibirCarregando(estado.carregando, progressoEncerrarRoteiro, habilitado = estado.podeEncerrar)
 
         if (emRota) {
             // Garante o rastreamento ativo mesmo se o serviço tiver sido morto pelo sistema

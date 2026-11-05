@@ -14,9 +14,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.doAfterTextChanged
 import br.com.anderson.meuprimeiroprojeto.gerencial.R
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.DocumentoUtils
-import br.com.anderson.meuprimeiroprojeto.gerencial.dados.Uf
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.NovoPedidoUiState
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.NovoPedidoViewModel
 import java.text.SimpleDateFormat
@@ -43,11 +43,10 @@ class NovoPedidoActivity : AppCompatActivity() {
     private lateinit var editRua: EditText
     private lateinit var editNumero: EditText
     private lateinit var editBairro: EditText
-    private lateinit var editCidade: EditText
-    private lateinit var editUf: AutoCompleteTextView
+    private lateinit var editCidade: AutoCompleteTextView
     private lateinit var editQuantidadeM3: EditText
     private lateinit var editDistanciaKm: EditText
-    private lateinit var botaoDataEntrega: Button
+    private lateinit var botaoDataEntrega: TextView
     private lateinit var botaoSalvar: Button
     private lateinit var progresso: ProgressBar
     private lateinit var textErro: TextView
@@ -55,15 +54,21 @@ class NovoPedidoActivity : AppCompatActivity() {
     // Timestamp (meia-noite do dia escolhido) da data de entrega; null enquanto o gerente não escolher.
     private var dataEntregaSelecionada: Long? = null
 
+    // As cidades que podem ser escolhidas (strings.xml) e a que foi escolhida na lista. Fica null
+    // enquanto o gerente não tocar numa cidade da lista, ou se ele editar o texto depois de escolher.
+    private lateinit var cidades: List<String>
+    private var cidadeSelecionada: String? = null
+
     companion object {
         // Nome usado para guardar a data escolhida no Bundle quando a tela é recriada.
         private const val CHAVE_DATA_ENTREGA = "data_entrega_selecionada"
+        // Nome usado para guardar a cidade escolhida no Bundle quando a tela é recriada.
+        private const val CHAVE_CIDADE = "cidade_selecionada"
     }
 
     /**
      * Chamado pelo Android quando a tela é criada. Liga os componentes e:
      * - recupera a data de entrega escolhida, se a tela está sendo recriada (ver [onSaveInstanceState]);
-     * - liga as sugestões do campo UF (`AutoCompleteTextView` + a lista de [Uf]);
      * - liga a máscara de CPF/CNPJ no campo documento ([MascaraDocumento]);
      * - liga o botão da data (abre o calendário) e o botão Salvar (entrega tudo ao ViewModel);
      * - começa a observar o estado do ViewModel.
@@ -82,7 +87,6 @@ class NovoPedidoActivity : AppCompatActivity() {
         editNumero = findViewById(R.id.editNumero)
         editBairro = findViewById(R.id.editBairro)
         editCidade = findViewById(R.id.editCidade)
-        editUf = findViewById(R.id.editUf)
         editQuantidadeM3 = findViewById(R.id.editQuantidadeM3)
         editDistanciaKm = findViewById(R.id.editDistanciaKm)
         botaoDataEntrega = findViewById(R.id.botaoDataEntrega)
@@ -94,8 +98,10 @@ class NovoPedidoActivity : AppCompatActivity() {
         dataEntregaSelecionada = savedInstanceState?.getLong(CHAVE_DATA_ENTREGA)?.takeIf { it != 0L }
         dataEntregaSelecionada?.let { botaoDataEntrega.text = formatoData.format(Date(it)) }
 
-        editUf.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, Uf.siglas))
         editDocumento.addTextChangedListener(MascaraDocumento(editDocumento))
+
+        cidadeSelecionada = savedInstanceState?.getString(CHAVE_CIDADE)
+        configurarCampoCidade()
 
         botaoDataEntrega.setOnClickListener { abrirSeletorDeDataEntrega() }
         botaoSalvar.setOnClickListener {
@@ -106,8 +112,7 @@ class NovoPedidoActivity : AppCompatActivity() {
                 rua = editRua.text.toString().trim(),
                 numero = editNumero.text.toString().trim(),
                 bairro = editBairro.text.toString().trim(),
-                cidade = editCidade.text.toString().trim(),
-                ufDigitada = editUf.text.toString(),
+                cidade = cidadeValida() ?: "",
                 quantidadeDigitada = editQuantidadeM3.text.toString(),
                 distanciaDigitada = editDistanciaKm.text.toString(),
                 dataEntrega = dataEntregaSelecionada
@@ -126,6 +131,48 @@ class NovoPedidoActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         dataEntregaSelecionada?.let { outState.putLong(CHAVE_DATA_ENTREGA, it) }
+        outState.putString(CHAVE_CIDADE, cidadeSelecionada)
+    }
+
+    /**
+     * Liga o campo Cidade: conforme o gerente digita, aparecem as cidades da lista que combinam. Só
+     * vale uma cidade da lista; texto livre não é aceito:
+     * - tocar numa cidade da lista guarda a escolha em [cidadeSelecionada];
+     * - editar o texto depois disso desfaz a escolha;
+     * - ao sair do campo, se o texto não for uma cidade da lista, ele é apagado e o erro aparece.
+     */
+    private fun configurarCampoCidade() {
+        cidades = resources.getStringArray(R.array.cidades_alto_vale).toList()
+        editCidade.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, cidades))
+
+        editCidade.setOnItemClickListener { parent, _, posicao, _ ->
+            cidadeSelecionada = parent.getItemAtPosition(posicao) as String
+            editCidade.error = null
+        }
+        editCidade.doAfterTextChanged { texto ->
+            if (texto.toString() != cidadeSelecionada) cidadeSelecionada = null
+        }
+        editCidade.setOnFocusChangeListener { _, temFoco ->
+            if (temFoco) return@setOnFocusChangeListener
+            val cidade = cidadeValida()
+            if (cidade != null) {
+                cidadeSelecionada = cidade
+                editCidade.setText(cidade, false)
+            } else if (editCidade.text.isNotBlank()) {
+                editCidade.text.clear()
+                editCidade.error = getString(R.string.novo_pedido_erro_cidade)
+            }
+        }
+    }
+
+    /**
+     * Devolve a cidade escolhida, ou `null` se o texto do campo não for uma cidade da lista. Aceita
+     * também o nome digitado por completo (sem diferenciar maiúsculas), mesmo sem tocar na lista.
+     */
+    private fun cidadeValida(): String? {
+        cidadeSelecionada?.let { return it }
+        val digitado = editCidade.text.toString().trim()
+        return cidades.firstOrNull { it.equals(digitado, ignoreCase = true) }
     }
 
     /**
@@ -161,8 +208,7 @@ class NovoPedidoActivity : AppCompatActivity() {
      * pedido criado num Toast e fecha a tela.
      */
     private fun exibirEstado(estado: NovoPedidoUiState) {
-        progresso.visibility = if (estado.carregando) View.VISIBLE else View.GONE
-        botaoSalvar.isEnabled = !estado.carregando
+        botaoSalvar.exibirCarregando(estado.carregando, progresso)
 
         editDocumento.error = if (estado.erroDocumento) getString(R.string.novo_pedido_erro_documento) else null
         editNome.error = if (estado.erroNome) getString(R.string.novo_pedido_erro_nome) else null

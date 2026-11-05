@@ -7,7 +7,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.PedidoRepositorio
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.DocumentoUtils
-import br.com.anderson.meuprimeiroprojeto.gerencial.dados.Uf
 import kotlinx.coroutines.launch
 
 /**
@@ -21,7 +20,7 @@ data class NovoPedidoUiState(
     val carregando: Boolean = false,
     val erroDocumento: Boolean = false,
     val erroNome: Boolean = false,
-    /** Qualquer problema no endereço (CEP, rua, número, bairro, cidade ou UF). */
+    /** Qualquer problema no endereço (CEP, rua, número, bairro ou cidade). */
     val erroEndereco: Boolean = false,
     val erroQuantidade: Boolean = false,
     val erroDistanciaKm: Boolean = false,
@@ -41,6 +40,9 @@ class NovoPedidoViewModel : ViewModel() {
     companion object {
         // Etiqueta das mensagens desta classe no Logcat.
         private const val TAG = "NovoPedidoViewModel"
+
+        // O campo UF foi removido da tela: todos os pedidos são de Santa Catarina.
+        private const val UF_PADRAO = "SC"
     }
 
     // `_estado` é a versão que o ViewModel pode mudar; `estado` é a versão só de leitura da tela.
@@ -54,7 +56,7 @@ class NovoPedidoViewModel : ViewModel() {
      * O que é conferido:
      * - documento: precisa ser CPF ou CNPJ válido (dígitos verificadores certos);
      * - nome: não pode ser vazio;
-     * - endereço: CEP com 8 números, rua/número/bairro/cidade preenchidos e UF existente;
+     * - endereço: CEP com 8 números, rua/número/bairro/cidade preenchidos;
      * - quantidade e distância: números maiores que zero (a vírgula é trocada por ponto, porque o
      *   Kotlin só entende "2.5");
      * - data de entrega: precisa ter sido escolhida.
@@ -74,7 +76,6 @@ class NovoPedidoViewModel : ViewModel() {
         numero: String,
         bairro: String,
         cidade: String,
-        ufDigitada: String,
         quantidadeDigitada: String,
         distanciaDigitada: String,
         dataEntrega: Long?
@@ -85,9 +86,8 @@ class NovoPedidoViewModel : ViewModel() {
         val nomeInvalido = nome.isEmpty()
 
         val cep = DocumentoUtils.apenasDigitos(cepDigitado)
-        val uf = ufDigitada.trim().uppercase()
         val enderecoInvalido = cep.length != 8 || rua.isEmpty() || numero.isEmpty() ||
-            bairro.isEmpty() || cidade.isEmpty() || uf !in Uf.siglas
+            bairro.isEmpty() || cidade.isEmpty()
 
         val quantidadeM3 = quantidadeDigitada.trim().replace(',', '.').toDoubleOrNull()
         val quantidadeInvalida = quantidadeM3 == null || quantidadeM3 <= 0.0
@@ -132,7 +132,7 @@ class NovoPedidoViewModel : ViewModel() {
                     numero = numero,
                     bairro = bairro,
                     cidade = cidade,
-                    uf = uf,
+                    uf = UF_PADRAO,
                     cep = cep,
                     quantidadeTotalM3 = requireNotNull(quantidadeM3),
                     dataEntrega = requireNotNull(dataEntrega),

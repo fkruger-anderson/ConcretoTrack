@@ -65,8 +65,7 @@ class CadastroCaminhaoActivity : AppCompatActivity() {
      * Toast e o fechamento da tela.
      */
     private fun exibirEstado(estado: CadastroCaminhaoUiState) {
-        progresso.visibility = if (estado.carregando) View.VISIBLE else View.GONE
-        botaoCriar.isEnabled = !estado.carregando
+        botaoCriar.exibirCarregando(estado.carregando, progresso)
 
         editPlaca.error = if (estado.erroCampoPlaca) getString(R.string.cadastro_caminhao_erro_placa) else null
         editAno.error = if (estado.erroCampoAno) getString(R.string.cadastro_caminhao_erro_ano) else null
