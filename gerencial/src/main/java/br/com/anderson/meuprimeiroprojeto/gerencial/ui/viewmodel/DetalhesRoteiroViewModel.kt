@@ -10,6 +10,7 @@ import br.com.anderson.meuprimeiroprojeto.gerencial.backend.PontoGpsRemoto
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.RoteiroRepositorio
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.ViagemRepositorio
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusViagem
+import br.com.anderson.meuprimeiroprojeto.gerencial.dados.identificacaoCaminhao
 import kotlinx.coroutines.launch
 
 /**
@@ -50,7 +51,7 @@ data class DetalhesRoteiroUiState(
     val pontos: List<PontoGpsRemoto> = emptyList(),
     /** Dados do cabeçalho. */
     val motoristaNome: String = "",
-    val caminhaoPlaca: String = "",
+    val caminhaoNumero: String = "",
     val status: String = "",
     val dataInicio: Long? = null,
     val dataFim: Long? = null,
@@ -167,7 +168,7 @@ class DetalhesRoteiroViewModel : ViewModel() {
                 carregado = true,
                 pontos = pontos,
                 motoristaNome = roteiro.motoristaNome,
-                caminhaoPlaca = roteiro.caminhaoPlaca,
+                caminhaoNumero = identificacaoCaminhao(roteiro.caminhaoNumero, roteiro.caminhaoPlaca),
                 status = roteiro.status,
                 dataInicio = roteiro.dataInicio,
                 dataFim = roteiro.dataFim,

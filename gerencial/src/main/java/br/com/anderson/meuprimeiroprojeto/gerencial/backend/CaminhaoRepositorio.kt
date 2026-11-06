@@ -17,6 +17,8 @@ object CaminhaoRepositorio {
     /** Erro lançado quando o gerente tenta cadastrar uma placa que já existe. */
     class PlacaJaCadastradaException : Exception("Já existe um caminhão com essa placa")
 
+    class NumeroJaCadastradoException : Exception("Já existe um caminhão com esse número")
+
     /**
      * Cadastra um caminhão usando a placa como nome (id) do documento.
      *
@@ -24,23 +26,25 @@ object CaminhaoRepositorio {
      * o `set` do Firestore não reclama de documento repetido: ele simplesmente substituiria o
      * caminhão que já estava lá.
      */
-    suspend fun cadastrar(placa: String, marca: String, modelo: String, ano: Int) {
-        val documento = db.collection("caminhoes").document(placa)
-        if (documento.get().aguardar().exists()) {
+    suspend fun cadastrar(placa: String, numero: String, marca: String, modelo: String, ano: Int) {
+        val colecao = db.collection("caminhoes")
+        val documento = colecao.document(placa)
+        val existente = documento.get().aguardar()
+        if (existente.exists() && !existente.getString("numero").isNullOrBlank()) {
             throw PlacaJaCadastradaException()
         }
-        documento.set(CaminhaoRemoto(marca = marca, modelo = modelo, ano = ano)).aguardar()
+        val mesmoNumero = colecao.whereEqualTo("numero", numero).get().aguardar()
+        if (mesmoNumero.documents.any { it.id != placa }) {
+            throw NumeroJaCadastradoException()
+        }
+        documento.set(CaminhaoRemoto(numero = numero, marca = marca, modelo = modelo, ano = ano)).aguardar()
     }
 
-    /**
-     * Lista todos os caminhões cadastrados, em ordem de placa, para a caixa de seleção (spinner)
-     * da tela de atribuir viagem. Junta o id do documento (a placa) com os dados de cada um.
-     */
     suspend fun listar(): List<Caminhao> {
         val snapshot = db.collection("caminhoes").get().aguardar()
         return snapshot.documents.mapNotNull { documento ->
             val remoto = documento.toObject(CaminhaoRemoto::class.java) ?: return@mapNotNull null
-            Caminhao(documento.id, remoto.marca, remoto.modelo, remoto.ano)
-        }.sortedBy { it.placa }
+            Caminhao(documento.id, remoto.numero, remoto.marca, remoto.modelo, remoto.ano)
+        }.sortedWith(compareBy({ it.numero.toIntOrNull() ?: Int.MAX_VALUE }, { it.numero }, { it.placa }))
     }
 }

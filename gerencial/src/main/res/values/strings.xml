@@ -45,14 +45,17 @@
 
     <string name="cadastro_caminhao_titulo">Novo caminhão</string>
     <string name="cadastro_caminhao_hint_placa">Placa</string>
+    <string name="cadastro_caminhao_hint_numero">Número</string>
     <string name="cadastro_caminhao_hint_marca">Marca</string>
     <string name="cadastro_caminhao_hint_modelo">Modelo</string>
     <string name="cadastro_caminhao_hint_ano">Ano</string>
     <string name="cadastro_caminhao_botao">Cadastrar caminhão</string>
     <string name="cadastro_caminhao_erro_placa">Placa inválida (ex.: ABC1D23 ou ABC1234)</string>
+    <string name="cadastro_caminhao_erro_numero">Informe o número do caminhão, só com dígitos (ex.: 04)</string>
     <string name="cadastro_caminhao_erro_marca_modelo">Preencha marca e modelo</string>
     <string name="cadastro_caminhao_erro_ano">Informe um ano válido</string>
     <string name="cadastro_caminhao_erro_placa_duplicada">Já existe um caminhão com essa placa</string>
+    <string name="cadastro_caminhao_erro_numero_duplicado">Já existe um caminhão com esse número</string>
     <string name="cadastro_caminhao_erro_generico">Não foi possível cadastrar. Verifique sua conexão e tente de novo</string>
     <string name="cadastro_caminhao_sucesso">Caminhão cadastrado</string>
 
@@ -90,6 +93,9 @@
     <string name="novo_pedido_hint_bairro">Bairro</string>
     <string name="novo_pedido_hint_cidade">Cidade</string>
     <string name="novo_pedido_erro_cidade">Escolha uma cidade da lista</string>
+    <string name="novo_pedido_erro_cep_nao_encontrado">CEP não encontrado</string>
+    <string name="novo_pedido_erro_cep_fora_area">Este CEP é de uma cidade fora do Alto Vale do Itajaí</string>
+    <string name="novo_pedido_erro_cep_sem_conexao">Sem conexão para buscar o endereço pelo CEP</string>
     <string name="novo_pedido_hint_m3">Quantidade total (m³)</string>
     <string name="novo_pedido_hint_distancia_km">Distância da usina até o cliente (km, ida)</string>
     <string name="novo_pedido_hint_data_entrega">Data de entrega</string>
@@ -120,7 +126,7 @@
     <string name="cancelar_viagem_erro_estado">Essa viagem não pode mais ser cancelada (já foi concluída ou cancelada)</string>
     <string name="cancelar_viagem_erro_generico">Não foi possível cancelar a viagem. Verifique sua conexão e tente de novo</string>
     <string name="cancelar_viagem_sucesso">Viagem cancelada</string>
-    <string name="viagem_motorista_formato">%1$s — placa %2$s</string>
+    <string name="viagem_motorista_formato">%1$s — caminhão %2$s</string>
     <string name="viagem_m3_formato">%1$s m³</string>
     <string name="viagem_periodo_formato">%1$s - %2$s</string>
     <string name="viagem_motivo_formato">Motivo: %1$s</string>
@@ -146,7 +152,7 @@
     <string name="detalhes_roteiro_item_rateio_formato">%1$s%% do roteiro · %2$s km atribuídos</string>
     <string name="detalhes_roteiro_item_sem_km">Aguardando o roteiro ser encerrado</string>
 
-    <string name="mapa_marcador_formato">%1$s — placa %2$s</string>
+    <string name="mapa_marcador_formato">%1$s — caminhão %2$s</string>
 
     <string name="nav_pedidos">Pedidos</string>
     <string name="nav_mapa">Mapa</string>
@@ -192,4 +198,5 @@
     </string-array>
     <string name="carregando">Carregando</string>
     <string name="voltar">Voltar</string>
+    <string name="fechar">Fechar</string>
 </resources>

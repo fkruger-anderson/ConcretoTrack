@@ -30,6 +30,7 @@ data class ViagemRemota(
     val motoristaNome: String = "",
     /** Cópia da placa do caminhão. É por ela que se confere se o roteiro usa um caminhão só. */
     val caminhaoPlaca: String = "",
+    val caminhaoNumero: String = "",
     /** Quantos m³ de concreto esta viagem leva. */
     val metrosCubicos: Double = 0.0,
     /** Situação da viagem, gravada como texto: um dos nomes do enum `StatusViagem`. */

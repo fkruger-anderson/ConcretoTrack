@@ -45,6 +45,7 @@ object ViagemRepositorio {
         motoristaUid: String,
         motoristaNome: String,
         caminhaoPlaca: String,
+        caminhaoNumero: String,
         metrosCubicos: Double
     ): String {
         val pedidoRef = db.collection("pedidos").document(pedidoId.toString())
@@ -69,6 +70,7 @@ object ViagemRepositorio {
                     motoristaUid = motoristaUid,
                     motoristaNome = motoristaNome,
                     caminhaoPlaca = caminhaoPlaca,
+                    caminhaoNumero = caminhaoNumero,
                     metrosCubicos = metrosCubicos,
                     status = StatusViagem.ATRIBUIDA.name,
                     dataAtribuicao = System.currentTimeMillis()

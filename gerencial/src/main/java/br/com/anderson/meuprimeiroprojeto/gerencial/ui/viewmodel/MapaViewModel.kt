@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.RoteiroRepositorio
+import br.com.anderson.meuprimeiroprojeto.gerencial.dados.identificacaoCaminhao
 import com.google.firebase.firestore.ListenerRegistration
 
 /**
@@ -18,7 +19,7 @@ data class CaminhaoEmRota(
     val longitude: Double,
     /** Para o texto do marcador. */
     val motoristaNome: String,
-    val caminhaoPlaca: String = ""
+    val caminhaoNumero: String = ""
 )
 
 /** O estado da aba Mapa ([MapaFragment][br.com.anderson.meuprimeiroprojeto.gerencial.ui.MapaFragment]). */
@@ -62,7 +63,7 @@ class MapaViewModel : ViewModel() {
                     latitude = lat,
                     longitude = lng,
                     motoristaNome = roteiro.motoristaNome,
-                    caminhaoPlaca = roteiro.caminhaoPlaca
+                    caminhaoNumero = identificacaoCaminhao(roteiro.caminhaoNumero, roteiro.caminhaoPlaca)
                 )
             }
             _estado.value = MapaUiState(caminhoes)

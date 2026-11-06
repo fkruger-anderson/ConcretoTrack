@@ -10,4 +10,5 @@
     <color name="wa_grafite">#FF2B2B2B</color>
     <color name="wa_borda">#FF8E8E8E</color>
     <color name="wa_borda_desabilitada">#FFD0D0D0</color>
+    <color name="wa_fundo_desabilitado">#FFE4E4E4</color>
 </resources>

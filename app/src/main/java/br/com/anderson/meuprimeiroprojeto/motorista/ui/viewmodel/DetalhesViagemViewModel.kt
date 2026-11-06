@@ -10,6 +10,7 @@ import br.com.anderson.meuprimeiroprojeto.motorista.backend.PedidoRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.RoteiroRepositorio
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.ViagemRemota
 import br.com.anderson.meuprimeiroprojeto.motorista.backend.ViagemRepositorio
+import br.com.anderson.meuprimeiroprojeto.motorista.dados.identificacaoCaminhao
 import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusRoteiro
 import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusViagem
 import kotlinx.coroutines.TimeoutCancellationException
@@ -44,11 +45,10 @@ data class DetalhesViagemUiState(
     val carregado: Boolean = false,
     /** `true` se a viagem não foi encontrada. */
     val erroAoCarregar: Boolean = false,
-    /** Dados para mostrar: destinatário, endereço, m³ e placa. */
     val destinatarioNome: String = "",
     val enderecoResumido: String = "",
     val metrosCubicos: Double = 0.0,
-    val caminhaoPlaca: String = "",
+    val caminhaoNumero: String = "",
     /** Situação da viagem (nome de `StatusViagem`). */
     val status: String = "",
     /** Roteiro em que a viagem está, se estiver em algum. */
@@ -131,7 +131,7 @@ class DetalhesViagemViewModel : ViewModel() {
                 destinatarioNome = pedido?.destinatarioNome ?: "",
                 enderecoResumido = pedido?.enderecoResumido() ?: "",
                 metrosCubicos = viagem.metrosCubicos,
-                caminhaoPlaca = viagem.caminhaoPlaca,
+                caminhaoNumero = identificacaoCaminhao(viagem.caminhaoNumero, viagem.caminhaoPlaca),
                 status = viagem.status,
                 roteiroId = viagem.roteiroId,
                 dataInicio = viagem.dataInicio,

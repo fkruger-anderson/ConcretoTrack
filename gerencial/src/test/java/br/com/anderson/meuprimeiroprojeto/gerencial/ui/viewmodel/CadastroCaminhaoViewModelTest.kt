@@ -24,10 +24,11 @@ class CadastroCaminhaoViewModelTest {
     /** Preenche o formulário; cada teste troca só o campo que quer conferir. */
     private fun criar(
         placa: String = "ABC1D23",
+        numero: String = "12",
         marca: String = "",
         modelo: String = "Atego 2426",
         ano: String = "2020"
-    ) = viewModel.criar(placa, marca, modelo, ano)
+    ) = viewModel.criar(placa, numero, marca, modelo, ano)
 
     /** O estado atual (o `!!` diz ao Kotlin "tenho certeza que não é nulo aqui"). */
     private fun estado() = viewModel.estado.value!!
@@ -51,6 +52,30 @@ class CadastroCaminhaoViewModelTest {
     fun placaMercosulMinusculaNaoMarcaErro() {
         criar(placa = "abc1d23")
         assertFalse(estado().erroCampoPlaca)
+    }
+
+    @Test
+    fun numeroVazioMarcaErro() {
+        criar(numero = "")
+        assertTrue(estado().erroCampoNumero)
+    }
+
+    @Test
+    fun numeroComLetraMarcaErro() {
+        criar(numero = "12A")
+        assertTrue(estado().erroCampoNumero)
+    }
+
+    @Test
+    fun numeroZeroMarcaErro() {
+        criar(numero = "000")
+        assertTrue(estado().erroCampoNumero)
+    }
+
+    @Test
+    fun numeroComZerosAEsquerdaNaoMarcaErro() {
+        criar(numero = " 007 ")
+        assertFalse(estado().erroCampoNumero)
     }
 
     /** Marca vazia é recusada. */

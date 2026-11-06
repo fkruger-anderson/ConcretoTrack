@@ -1,12 +1,15 @@
 package br.com.anderson.meuprimeiroprojeto.motorista.ui
 
+import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import br.com.anderson.meuprimeiroprojeto.R
 import br.com.anderson.meuprimeiroprojeto.motorista.dados.ViagemAbertaComPedido
+import br.com.anderson.meuprimeiroprojeto.motorista.dados.identificacaoCaminhao
 import br.com.anderson.meuprimeiroprojeto.motorista.db.StatusViagem
 import br.com.anderson.meuprimeiroprojeto.motorista.formatarM3
 
@@ -36,9 +39,10 @@ class ViagemAbertaAdapter(
      * estão à mão, e a rolagem fica suave.
      */
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val textDestinatario: TextView = view.findViewById(R.id.textDestinatario)
+        val textTitulo: TextView = view.findViewById(R.id.textTitulo)
         val textEndereco: TextView = view.findViewById(R.id.textEndereco)
-        val textDetalhes: TextView = view.findViewById(R.id.textDetalhes)
+        val textM3: TextView = view.findViewById(R.id.textM3)
+        val textCaminhao: TextView = view.findViewById(R.id.textCaminhao)
         val textStatus: TextView = view.findViewById(R.id.textStatus)
     }
 
@@ -58,18 +62,33 @@ class ViagemAbertaAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = itens[position]
         val contexto = holder.itemView.context
-        holder.textDestinatario.text = item.pedido?.destinatarioNome ?: ""
+        val numero = position + 1
+        val destinatario = item.pedido?.destinatarioNome
+        holder.textTitulo.text = if (destinatario.isNullOrBlank()) {
+            contexto.getString(R.string.viagens_item_titulo_sem_destinatario, numero)
+        } else {
+            contexto.getString(R.string.viagens_item_titulo_formato, numero, destinatario)
+        }
         holder.textEndereco.text = item.pedido?.enderecoResumido() ?: ""
-        holder.textDetalhes.text = contexto.getString(
-            R.string.viagens_item_detalhes_formato, formatarM3(item.viagem.metrosCubicos), item.viagem.caminhaoPlaca
-        )
-        holder.textStatus.text = contexto.getString(
-            if (item.viagem.status == StatusViagem.EM_ROTA.name) {
-                R.string.viagens_status_em_rota
-            } else {
-                R.string.viagens_status_atribuida
-            }
-        )
+        holder.textM3.text = contexto.getString(R.string.viagens_item_m3_formato, formatarM3(item.viagem.metrosCubicos))
+        holder.textCaminhao.text = identificacaoCaminhao(item.viagem.caminhaoNumero, item.viagem.caminhaoPlaca)
+        val (textoStatus, corFundo, corTexto) = when (item.viagem.status) {
+            StatusViagem.EM_ROTA.name -> Triple(
+                R.string.viagens_status_em_rota, R.color.status_viagem_em_rota_fundo, R.color.status_viagem_em_rota_texto
+            )
+            StatusViagem.CONCLUIDA.name -> Triple(
+                R.string.viagens_status_concluida, R.color.status_viagem_concluida_fundo, R.color.status_viagem_concluida_texto
+            )
+            StatusViagem.CANCELADA.name -> Triple(
+                R.string.viagens_status_cancelada, R.color.status_viagem_cancelada_fundo, R.color.status_viagem_cancelada_texto
+            )
+            else -> Triple(
+                R.string.viagens_status_atribuida, R.color.status_viagem_atribuida_fundo, R.color.status_viagem_atribuida_texto
+            )
+        }
+        holder.textStatus.text = contexto.getString(textoStatus)
+        holder.textStatus.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(contexto, corFundo))
+        holder.textStatus.setTextColor(ContextCompat.getColor(contexto, corTexto))
         holder.itemView.setOnClickListener { aoClicar(item) }
     }
 

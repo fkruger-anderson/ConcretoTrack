@@ -49,6 +49,8 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
     testImplementation(libs.junit)
     // InstantTaskExecutorRule: deixa o LiveData funcionar nos testes que rodam no computador.
     testImplementation(libs.androidx.arch.core.testing)

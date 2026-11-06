@@ -37,6 +37,7 @@ class CadastroGerenteActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_cadastro_gerente)
+        configurarBarraPrimeiroNivel()
 
         editNome = findViewById(R.id.editNome)
         editEmail = findViewById(R.id.editEmail)

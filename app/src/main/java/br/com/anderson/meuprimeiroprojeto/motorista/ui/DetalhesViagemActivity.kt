@@ -64,6 +64,7 @@ class DetalhesViagemActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detalhes_viagem)
+        configurarBarraPrimeiroNivel()
 
         val idRecebido = intent.getStringExtra(EXTRA_VIAGEM_ID)
         if (idRecebido.isNullOrBlank()) {
@@ -114,7 +115,7 @@ class DetalhesViagemActivity : AppCompatActivity() {
             R.string.iniciar_transito_m3_formato, formatarM3(estado.metrosCubicos)
         )
         findViewById<TextView>(R.id.textCaminhao).text = getString(
-            R.string.iniciar_transito_caminhao_formato, estado.caminhaoPlaca
+            R.string.iniciar_transito_caminhao_formato, estado.caminhaoNumero
         )
 
         if (estado.dataInicio != null) {

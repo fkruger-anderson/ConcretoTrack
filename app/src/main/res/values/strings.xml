@@ -18,9 +18,13 @@
     <string name="viagens_lista_vazia">Nenhuma viagem em aberto</string>
     <string name="viagens_erro_carregar">Não foi possível carregar suas viagens. Verifique sua conexão</string>
     <string name="viagens_boas_vindas">Bem-vindo, %1$s</string>
-    <string name="viagens_item_detalhes_formato">%1$s m³ · caminhão %2$s</string>
-    <string name="viagens_status_atribuida">Atribuída — toque para ver detalhes</string>
-    <string name="viagens_status_em_rota">Em rota — toque para ver detalhes</string>
+    <string name="viagens_item_titulo_formato">Viagem %1$d · %2$s</string>
+    <string name="viagens_item_titulo_sem_destinatario">Viagem %1$d</string>
+    <string name="viagens_item_m3_formato">%1$s m³</string>
+    <string name="viagens_status_atribuida">Atribuída</string>
+    <string name="viagens_status_em_rota">Em rota</string>
+    <string name="viagens_status_concluida">Concluída</string>
+    <string name="viagens_status_cancelada">Cancelada</string>
 
     <string name="iniciar_transito_botao">Iniciar trânsito</string>
     <string name="iniciar_transito_m3_formato">%1$s m³</string>
@@ -63,4 +67,6 @@
     <string name="erro_sem_conexao_encerrar">Sem conexão. Tente encerrar de novo</string>
     <string name="info_entrega_enfileirada">Sem conexão agora. A confirmação de entrega será enviada automaticamente quando a conexão voltar</string>
     <string name="carregando">Carregando</string>
+    <string name="voltar">Voltar</string>
+    <string name="fechar">Fechar</string>
 </resources>

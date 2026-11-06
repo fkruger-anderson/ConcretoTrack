@@ -142,6 +142,7 @@ class AtribuirViagemViewModel : ViewModel() {
                         motoristaUid = motorista.uid,
                         motoristaNome = motorista.perfil.nome,
                         caminhaoPlaca = caminhao.placa,
+                        caminhaoNumero = caminhao.numero,
                         metrosCubicos = quantidadeM3
                     )
                 }

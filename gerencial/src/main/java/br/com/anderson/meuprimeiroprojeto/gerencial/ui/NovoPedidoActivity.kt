@@ -16,7 +16,9 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.doAfterTextChanged
 import br.com.anderson.meuprimeiroprojeto.gerencial.R
+import br.com.anderson.meuprimeiroprojeto.gerencial.backend.EnderecoCep
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.DocumentoUtils
+import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.ErroCep
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.NovoPedidoUiState
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.NovoPedidoViewModel
 import java.text.SimpleDateFormat
@@ -79,6 +81,7 @@ class NovoPedidoActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_novo_pedido)
+        configurarBarraPrimeiroNivel()
 
         editDocumento = findViewById(R.id.editDocumento)
         editNome = findViewById(R.id.editNome)
@@ -102,6 +105,11 @@ class NovoPedidoActivity : AppCompatActivity() {
 
         cidadeSelecionada = savedInstanceState?.getString(CHAVE_CIDADE)
         configurarCampoCidade()
+
+        editCep.doAfterTextChanged { texto ->
+            editCep.error = null
+            viewModel.buscarCep(texto.toString(), cidades)
+        }
 
         botaoDataEntrega.setOnClickListener { abrirSeletorDeDataEntrega() }
         botaoSalvar.setOnClickListener {
@@ -165,6 +173,14 @@ class NovoPedidoActivity : AppCompatActivity() {
         }
     }
 
+    private fun preencherEndereco(endereco: EnderecoCep) {
+        editRua.setText(endereco.logradouro.orEmpty())
+        editBairro.setText(endereco.bairro.orEmpty())
+        cidadeSelecionada = endereco.localidade
+        editCidade.setText(endereco.localidade.orEmpty(), false)
+        editCidade.error = null
+    }
+
     /**
      * Devolve a cidade escolhida, ou `null` se o texto do campo não for uma cidade da lista. Aceita
      * também o nome digitado por completo (sem diferenciar maiúsculas), mesmo sem tocar na lista.
@@ -223,6 +239,21 @@ class NovoPedidoActivity : AppCompatActivity() {
         }
         textErro.visibility = if (mensagemBanner != null) View.VISIBLE else View.GONE
         if (mensagemBanner != null) textErro.text = mensagemBanner
+
+        editRua.isEnabled = !estado.buscandoCep
+        editBairro.isEnabled = !estado.buscandoCep
+        editCidade.isEnabled = !estado.buscandoCep
+
+        estado.enderecoCep?.getConteudoSeNaoTratado()?.let { preencherEndereco(it) }
+        estado.erroCep?.getConteudoSeNaoTratado()?.let { erro ->
+            editCep.error = getString(
+                when (erro) {
+                    ErroCep.NAO_ENCONTRADO -> R.string.novo_pedido_erro_cep_nao_encontrado
+                    ErroCep.FORA_DA_AREA -> R.string.novo_pedido_erro_cep_fora_area
+                    ErroCep.SEM_CONEXAO -> R.string.novo_pedido_erro_cep_sem_conexao
+                }
+            )
+        }
 
         estado.sucesso?.getConteudoSeNaoTratado()?.let { id ->
             Toast.makeText(this, getString(R.string.novo_pedido_sucesso, id), Toast.LENGTH_LONG).show()

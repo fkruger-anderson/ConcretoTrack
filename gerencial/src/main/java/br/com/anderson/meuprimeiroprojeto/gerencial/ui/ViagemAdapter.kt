@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import br.com.anderson.meuprimeiroprojeto.gerencial.R
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.ViagemRemota
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusViagem
+import br.com.anderson.meuprimeiroprojeto.gerencial.dados.identificacaoCaminhao
 import br.com.anderson.meuprimeiroprojeto.gerencial.formatarKm
 import br.com.anderson.meuprimeiroprojeto.gerencial.formatarM3
 import java.text.SimpleDateFormat
@@ -80,7 +81,8 @@ class ViagemAdapter(
         val contexto = holder.itemView.context
 
         holder.textMotorista.text = contexto.getString(
-            R.string.viagem_motorista_formato, item.motoristaNome, item.caminhaoPlaca
+            R.string.viagem_motorista_formato, item.motoristaNome,
+            identificacaoCaminhao(item.caminhaoNumero, item.caminhaoPlaca)
         )
         // A situação vira só a descrição do ponto, para os leitores de tela.
         holder.pontoTimeline.contentDescription = contexto.getString(

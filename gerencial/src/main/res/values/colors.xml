@@ -11,6 +11,7 @@
     <color name="wa_grafite">#FF2B2B2B</color>
     <color name="wa_borda">#FF8E8E8E</color>
     <color name="wa_borda_desabilitada">#FFD0D0D0</color>
+    <color name="wa_fundo_desabilitado">#FFE4E4E4</color>
     <color name="erro">#B00020</color>
     <!-- Situação do pedido: fundo claro e texto escuro da mesma cor, para ficar legível -->
     <color name="status_pendente_fundo">#FFFDDCDA</color>

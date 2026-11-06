@@ -54,6 +54,7 @@ class AtribuirViagemActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_atribuir_viagem)
+        configurarBarraSegundoNivel()
 
         pedidoId = intent.getIntExtra(EXTRA_PEDIDO_ID, -1)
         if (pedidoId <= 0) {

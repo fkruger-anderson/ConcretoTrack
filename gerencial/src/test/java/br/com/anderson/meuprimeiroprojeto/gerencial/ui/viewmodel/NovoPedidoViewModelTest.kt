@@ -2,6 +2,7 @@ package br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -115,5 +116,13 @@ class NovoPedidoViewModelTest {
     fun formularioComErroNaoEnvia() {
         salvar()
         assertFalse(estado().carregando)
+    }
+
+    @Test
+    fun cepIncompletoNaoBuscaEndereco() {
+        viewModel.buscarCep("8915-00", listOf("Rio do Sul"))
+        assertNull(estado().enderecoCep)
+        assertNull(estado().erroCep)
+        assertFalse(estado().buscandoCep)
     }
 }

@@ -64,6 +64,7 @@ class DetalhesRoteiroActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detalhes_roteiro)
+        configurarBarraSegundoNivel()
         title = getString(R.string.detalhes_roteiro_titulo)
 
         val idRecebido = intent.getStringExtra(EXTRA_ROTEIRO_ID)
@@ -109,7 +110,7 @@ class DetalhesRoteiroActivity : AppCompatActivity(), OnMapReadyCallback {
         if (!estado.carregado) return
 
         textMotorista.text = getString(R.string.detalhes_roteiro_motorista_formato, estado.motoristaNome)
-        textCaminhao.text = getString(R.string.detalhes_roteiro_caminhao_formato, estado.caminhaoPlaca)
+        textCaminhao.text = getString(R.string.detalhes_roteiro_caminhao_formato, estado.caminhaoNumero)
 
         val inicio = estado.dataInicio?.let { formatoData.format(Date(it)) } ?: ""
         val fim = estado.dataFim

@@ -101,6 +101,7 @@ object RoteiroRepositorio {
                 motoristaUid = motoristaUid,
                 motoristaNome = viagem.motoristaNome,
                 caminhaoPlaca = viagem.caminhaoPlaca,
+                caminhaoNumero = viagem.caminhaoNumero,
                 status = StatusRoteiro.PLANEJANDO.name
             )
             novoRef.set(novoRoteiro).aguardar()

@@ -29,6 +29,7 @@ data class ViagemRemota(
     val motoristaNome: String = "",
     /** Cópia da placa do caminhão. */
     val caminhaoPlaca: String = "",
+    val caminhaoNumero: String = "",
     /** Quantos m³ esta viagem leva. */
     val metrosCubicos: Double = 0.0,
     /** Situação da viagem, gravada como texto (nome de um `StatusViagem`). */
