@@ -129,7 +129,7 @@ object PedidoRepositorio {
 
         val novoId = db.runTransaction { transacao ->
             val snapshot = transacao.get(contadorRef)
-            val atual = snapshot.getLong("proximo")
+            val atual = snapshot.getLong("proximo") ?: 1
             val proximo = atual + 1
 
             transacao.set(contadorRef, mapOf("proximo" to proximo))
