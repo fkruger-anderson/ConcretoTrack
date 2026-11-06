@@ -31,7 +31,8 @@ mesmo roteiro — ver "Rateio de km" em Regras de negócio)
 **Viagem** (um caminhão levando parte do pedido; um pedido tem várias viagens; criada pelo gerente
 ao atribuir, não pelo motorista)
 
-* pedido, motorista, caminhão (placa denormalizada em `caminhaoPlaca`, pra exibir sem outra consulta)
+* pedido, motorista, caminhão (placa e número denormalizados em `caminhaoPlaca` e `caminhaoNumero`,
+gravados na atribuição; a tela mostra o número, e a placa só se o número estiver vazio)
 * m³ desta viagem (informado pelo gerente ao atribuir)
 * status: atribuída, em rota, concluída, cancelada (com motivo)
 * dataAtribuicao, início (quando o *roteiro* que a contém é iniciado), fim (quando o motorista
@@ -42,7 +43,8 @@ marca essa viagem como entregue)
 
 **Roteiro** (um caminhão levando várias viagens de uma vez; agrupado e conduzido pelo motorista)
 
-* motorista, caminhão (placa denormalizada)
+* motorista, caminhão (placa e número denormalizados em `caminhaoPlaca` e `caminhaoNumero`, copiados
+da primeira viagem ao criar o roteiro)
 * status: planejando (motorista ainda adicionando/removendo viagens), em rota, concluído
 * dataInicio (quando o motorista inicia o trânsito), dataFim (quando encerra o roteiro)
 * km total da rota (calculado do rastro de GPS ao encerrar, depois rateado entre as viagens — ver
@@ -53,7 +55,18 @@ um mesmo roteiro usam o mesmo caminhão.
 **Ponto GPS**: roteiro (não viagem — várias viagens em rota ao mesmo tempo, do mesmo roteiro,
 compartilham o mesmo rastro), latitude, longitude, horário.
 
-**Caminhão** (cadastrado pelo gerente): Placa (id), Marca, Modelo, Ano.
+**Caminhão** (cadastrado pelo gerente): Placa (id do documento), Número, Marca, Modelo, Ano.
+
+* Número: o número pintado na lataria, pelo qual os funcionários chamam o caminhão. Texto (String)
+só com dígitos, de 1 a 4, sem ser só zeros; obrigatório e único. Os zeros à esquerda são
+preservados ("04" é gravado e mostrado como "04", e é diferente de "4"). É o que todas as telas e o
+mapa mostram.
+* A placa só aparece no cadastro do caminhão; fica no Firestore como id do documento e para
+conferir que um roteiro usa um caminhão só.
+* Caminhões, viagens e roteiros antigos, gravados antes do número existir, não têm `numero` /
+`caminhaoNumero`: as telas mostram a placa no lugar. Para dar número a um caminhão antigo, basta
+cadastrá-lo de novo com a mesma placa (o cadastro completa o documento em vez de recusar a placa
+repetida); as viagens atribuídas a partir daí já levam o número.
 
 **Motorista** (cadastrado pelo gerente, inclusive email/senha de acesso): Nome, CPF, email.
 
@@ -109,7 +122,7 @@ rota calculado e rateado entre as viagens concluídas.
 ## Fluxo do gerente
 
 1. Login (email/senha).
-2. Cadastra pedidos, motoristas (nome, CPF, email, senha) e caminhões (placa, marca, modelo, ano).
+2. Cadastra pedidos, motoristas (nome, CPF, email, senha) e caminhões (placa, número, marca, modelo, ano).
 3. Atribui uma viagem: escolhe um pedido com saldo, um motorista, um caminhão e a quantidade em m³.
 4. Acompanha os caminhões em rota no mapa em tempo real (por roteiro, não por viagem — um caminhão
 = um roteiro) e o histórico de cada pedido, incluindo, no detalhe de um roteiro, a tabela de

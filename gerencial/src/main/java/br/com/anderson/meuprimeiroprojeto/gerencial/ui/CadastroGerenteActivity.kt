@@ -37,6 +37,7 @@ class CadastroGerenteActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_cadastro_gerente)
+        configurarBarraPrimeiroNivel()
 
         editNome = findViewById(R.id.editNome)
         editEmail = findViewById(R.id.editEmail)
@@ -57,8 +58,7 @@ class CadastroGerenteActivity : AppCompatActivity() {
      * (email já usado, senha fraca...) e, se deu certo, um Toast e o fechamento da tela.
      */
     private fun exibirEstado(estado: CadastroGerenteUiState) {
-        progresso.visibility = if (estado.carregando) View.VISIBLE else View.GONE
-        botaoCriar.isEnabled = !estado.carregando
+        botaoCriar.exibirCarregando(estado.carregando, progresso)
 
         editNome.error = if (estado.erroCampoNome) getString(R.string.cadastro_erro_nome) else null
         editEmail.error = if (estado.erroCampoEmail) getString(R.string.cadastro_erro_email) else null

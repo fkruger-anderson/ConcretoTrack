@@ -87,7 +87,7 @@ class MapaFragment : Fragment(R.layout.fragment_mapa), OnMapReadyCallback {
 
         for (caminhao in caminhoes) {
             val posicao = LatLng(caminhao.latitude, caminhao.longitude)
-            val titulo = getString(R.string.mapa_marcador_formato, caminhao.motoristaNome, caminhao.caminhaoPlaca)
+            val titulo = getString(R.string.mapa_marcador_formato, caminhao.motoristaNome, caminhao.caminhaoNumero)
 
             val marcadorExistente = marcadores[caminhao.roteiroId]
             if (marcadorExistente != null) {

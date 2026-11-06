@@ -1,9 +1,11 @@
 package br.com.anderson.meuprimeiroprojeto.gerencial.ui
 
+import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import br.com.anderson.meuprimeiroprojeto.gerencial.R
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.PedidoComStatus
@@ -63,13 +65,22 @@ class PedidoAdapter(
         holder.textNumero.text = contexto.getString(
             R.string.home_item_numero_formato, item.id, item.destinatarioNome
         )
-        holder.textStatus.text = contexto.getString(
-            when (item.status) {
-                StatusPedido.PENDENTE -> R.string.status_pendente
-                StatusPedido.EM_ANDAMENTO -> R.string.status_em_andamento
-                StatusPedido.CONCLUIDO -> R.string.status_concluido
-            }
-        )
+        // Para cada situação: o texto, a cor de fundo do "card" e a cor do texto (mesma cor, mais escura).
+        val (textoStatus, corFundo, corTexto) = when (item.status) {
+            StatusPedido.PENDENTE -> Triple(
+                R.string.status_pendente, R.color.status_pendente_fundo, R.color.status_pendente_texto
+            )
+            StatusPedido.EM_ANDAMENTO -> Triple(
+                R.string.status_em_andamento, R.color.status_em_andamento_fundo, R.color.status_em_andamento_texto
+            )
+            StatusPedido.CONCLUIDO -> Triple(
+                R.string.status_concluido, R.color.status_concluido_fundo, R.color.status_concluido_texto
+            )
+        }
+        holder.textStatus.text = contexto.getString(textoStatus)
+        holder.textStatus.backgroundTintList =
+            ColorStateList.valueOf(ContextCompat.getColor(contexto, corFundo))
+        holder.textStatus.setTextColor(ContextCompat.getColor(contexto, corTexto))
         holder.textProgresso.text = contexto.getString(
             R.string.home_progresso_formato,
             formatarM3(item.m3Alocados),

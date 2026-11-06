@@ -19,6 +19,7 @@ data class RoteiroRemota(
     val motoristaNome: String = "",
     /** Cópia da placa do caminhão, para exibir. */
     val caminhaoPlaca: String = "",
+    val caminhaoNumero: String = "",
     /** Situação do roteiro, gravada como texto (nome de um `StatusRoteiro`). */
     val status: String = "",
     /** Quando o motorista saiu; null se ainda não saiu. */

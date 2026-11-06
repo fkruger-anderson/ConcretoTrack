@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="status_viagem_atribuida_fundo">#FFE3E6EE</color>
+    <color name="status_viagem_atribuida_texto">#FF3E4A63</color>
+    <color name="status_viagem_em_rota_fundo">#FFFFF1C2</color>
+    <color name="status_viagem_em_rota_texto">#FF7A5500</color>
+    <color name="status_viagem_concluida_fundo">#FFD6F2DE</color>
+    <color name="status_viagem_concluida_texto">#FF1B6B34</color>
+    <color name="status_viagem_cancelada_fundo">#FFFDDCDA</color>
+    <color name="status_viagem_cancelada_texto">#FFA8261F</color>
+</resources>

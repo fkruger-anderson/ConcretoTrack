@@ -3,6 +3,7 @@ package br.com.anderson.meuprimeiroprojeto.motorista.ui
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.viewModels
@@ -48,6 +49,7 @@ class DetalhesViagemActivity : AppCompatActivity() {
     private lateinit var textPeriodo: TextView
     private lateinit var textKm: TextView
     private lateinit var botaoAcao: Button
+    private lateinit var progressoAcao: ProgressBar
     private lateinit var textErro: TextView
     // Guarda o último estado desenhado, para o clique do botão saber qual ação executar.
     private var estadoAtual: DetalhesViagemUiState = DetalhesViagemUiState()
@@ -62,6 +64,7 @@ class DetalhesViagemActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detalhes_viagem)
+        configurarBarraPrimeiroNivel()
 
         val idRecebido = intent.getStringExtra(EXTRA_VIAGEM_ID)
         if (idRecebido.isNullOrBlank()) {
@@ -73,6 +76,7 @@ class DetalhesViagemActivity : AppCompatActivity() {
         textPeriodo = findViewById(R.id.textPeriodo)
         textKm = findViewById(R.id.textKm)
         botaoAcao = findViewById(R.id.botaoAcao)
+        progressoAcao = findViewById(R.id.progressoAcao)
         textErro = findViewById(R.id.textErro)
 
         botaoAcao.setOnClickListener { executarAcao() }
@@ -111,7 +115,7 @@ class DetalhesViagemActivity : AppCompatActivity() {
             R.string.iniciar_transito_m3_formato, formatarM3(estado.metrosCubicos)
         )
         findViewById<TextView>(R.id.textCaminhao).text = getString(
-            R.string.iniciar_transito_caminhao_formato, estado.caminhaoPlaca
+            R.string.iniciar_transito_caminhao_formato, estado.caminhaoNumero
         )
 
         if (estado.dataInicio != null) {
@@ -145,7 +149,7 @@ class DetalhesViagemActivity : AppCompatActivity() {
             }
             AcaoViagem.NENHUMA -> botaoAcao.visibility = View.GONE
         }
-        botaoAcao.isEnabled = !estado.carregando
+        botaoAcao.exibirCarregando(estado.carregando, progressoAcao)
 
         estado.aviso?.getConteudoSeNaoTratado()?.let { aviso ->
             val texto = when (aviso) {

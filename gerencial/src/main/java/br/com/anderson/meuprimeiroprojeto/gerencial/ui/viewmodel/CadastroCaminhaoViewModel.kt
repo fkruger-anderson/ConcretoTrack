@@ -5,13 +5,14 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.CaminhaoRepositorio
+import br.com.anderson.meuprimeiroprojeto.gerencial.dados.normalizarNumeroCaminhao
 import kotlinx.coroutines.launch
 
 /**
  * Erros que só o servidor consegue descobrir (placa repetida, falha de internet). Os erros de
  * preenchimento de cada campo ficam à parte, em [CadastroCaminhaoUiState].
  */
-enum class CadastroCaminhaoErro { PLACA_DUPLICADA, GENERICO }
+enum class CadastroCaminhaoErro { PLACA_DUPLICADA, NUMERO_DUPLICADO, GENERICO }
 
 /**
  * O estado da tela de cadastro de caminhão
@@ -22,6 +23,7 @@ data class CadastroCaminhaoUiState(
     val carregando: Boolean = false,
     /** Erros de preenchimento: placa, marca/modelo e ano. */
     val erroCampoPlaca: Boolean = false,
+    val erroCampoNumero: Boolean = false,
     val erroMarcaModelo: Boolean = false,
     val erroCampoAno: Boolean = false,
     /** Erro vindo do servidor, ou `null`. */
@@ -54,9 +56,18 @@ class CadastroCaminhaoViewModel : ViewModel() {
      * Se algo estiver errado, publica quais campos têm erro e para. Se estiver tudo certo, envia ao
      * Firestore; uma placa já cadastrada vira o erro [CadastroCaminhaoErro.PLACA_DUPLICADA].
      */
-    fun criar(placaDigitada: String, marcaDigitada: String, modeloDigitado: String, anoDigitado: String) {
+    fun criar(
+        placaDigitada: String,
+        numeroDigitado: String,
+        marcaDigitada: String,
+        modeloDigitado: String,
+        anoDigitado: String
+    ) {
         val placa = placaDigitada.trim().uppercase()
         val placaInvalida = !REGEX_PLACA.matches(placa)
+
+        val numero = normalizarNumeroCaminhao(numeroDigitado)
+        val numeroInvalido = numero == null
 
         val marca = marcaDigitada.trim()
         val modelo = modeloDigitado.trim()
@@ -65,9 +76,10 @@ class CadastroCaminhaoViewModel : ViewModel() {
         val ano = anoDigitado.trim().toIntOrNull()
         val anoInvalido = ano == null || ano < 1970 || ano > 2100
 
-        if (placaInvalida || marcaModeloInvalido || anoInvalido) {
+        if (placaInvalida || numeroInvalido || marcaModeloInvalido || anoInvalido) {
             _estado.value = _estado.value?.copy(
                 erroCampoPlaca = placaInvalida,
+                erroCampoNumero = numeroInvalido,
                 erroMarcaModelo = marcaModeloInvalido,
                 erroCampoAno = anoInvalido,
                 erroGeral = null
@@ -78,17 +90,21 @@ class CadastroCaminhaoViewModel : ViewModel() {
         _estado.value = _estado.value?.copy(
             carregando = true,
             erroCampoPlaca = false,
+            erroCampoNumero = false,
             erroMarcaModelo = false,
             erroCampoAno = false,
             erroGeral = null
         )
         viewModelScope.launch {
             try {
-                CaminhaoRepositorio.cadastrar(placa, marca, modelo, requireNotNull(ano))
+                CaminhaoRepositorio.cadastrar(placa, requireNotNull(numero), marca, modelo, requireNotNull(ano))
                 _estado.value = _estado.value?.copy(carregando = false, sucesso = Evento(Unit))
             } catch (erro: CaminhaoRepositorio.PlacaJaCadastradaException) {
                 _estado.value =
                     _estado.value?.copy(carregando = false, erroGeral = CadastroCaminhaoErro.PLACA_DUPLICADA)
+            } catch (erro: CaminhaoRepositorio.NumeroJaCadastradoException) {
+                _estado.value =
+                    _estado.value?.copy(carregando = false, erroGeral = CadastroCaminhaoErro.NUMERO_DUPLICADO)
             } catch (erro: Exception) {
                 _estado.value = _estado.value?.copy(carregando = false, erroGeral = CadastroCaminhaoErro.GENERICO)
             }

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ilustração das mensagens de "nenhum resultado": uma prancheta em pé na frente de outra inclinada para a direita. No estilo dos ícones preenchidos (Material Symbols), em dois tons de cinza. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="116dp"
+    android:height="140dp"
+    android:viewportWidth="723.8"
+    android:viewportHeight="875.6">
+    <group
+        android:translateX="-247.5"
+        android:translateY="-50.6">
+        <group
+            android:pivotX="520"
+            android:pivotY="500"
+            android:rotation="12"
+            android:translateX="120"
+            android:translateY="-10">
+            <path
+                android:fillColor="#FF959595"
+                android:pathData="M326,140H714A56,56 0 0,1 770,196V824A56,56 0 0,1 714,880H326A56,56 0 0,1 270,824V196A56,56 0 0,1 326,140Z" />
+            <path
+                android:fillColor="#FF959595"
+                android:pathData="M450,90H590A40,40 0 0,1 630,130V150A40,40 0 0,1 590,190H450A40,40 0 0,1 410,150V130A40,40 0 0,1 450,90Z" />
+        </group>
+        <path
+            android:fillColor="#FFB9B9B9"
+            android:pathData="M326,140H714A56,56 0 0,1 770,196V824A56,56 0 0,1 714,880H326A56,56 0 0,1 270,824V196A56,56 0 0,1 326,140Z" />
+        <path
+            android:fillColor="#FFB9B9B9"
+            android:pathData="M450,90H590A40,40 0 0,1 630,130V150A40,40 0 0,1 590,190H450A40,40 0 0,1 410,150V130A40,40 0 0,1 450,90Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M498,132A22,22 0 1,0 542,132A22,22 0 1,0 498,132Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M378,340H662A18,18 0 0,1 680,358V358A18,18 0 0,1 662,376H378A18,18 0 0,1 360,358V358A18,18 0 0,1 378,340Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M378,460H662A18,18 0 0,1 680,478V478A18,18 0 0,1 662,496H378A18,18 0 0,1 360,478V478A18,18 0 0,1 378,460Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M378,580H662A18,18 0 0,1 680,598V598A18,18 0 0,1 662,616H378A18,18 0 0,1 360,598V598A18,18 0 0,1 378,580Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M378,700H542A18,18 0 0,1 560,718V718A18,18 0 0,1 542,736H378A18,18 0 0,1 360,718V718A18,18 0 0,1 378,700Z" />
+    </group>
+</vector>

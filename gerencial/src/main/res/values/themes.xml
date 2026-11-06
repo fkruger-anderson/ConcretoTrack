@@ -7,6 +7,7 @@
         <item name="colorSecondary">@color/wa_grafite</item>
         <item name="colorOnSecondary">@color/white</item>
         <item name="materialButtonStyle">@style/Widget.WA.Button</item>
+        <item name="bottomNavigationStyle">@style/Widget.WA.BottomNavigationView</item>
         <item name="editTextStyle">@style/Widget.WA.EditText</item>
         <item name="android:editTextStyle">@style/Widget.WA.EditText</item>
         <item name="autoCompleteTextViewStyle">@style/Widget.WA.AutoCompleteTextView</item>
@@ -42,5 +43,27 @@
         <item name="android:minHeight">56dp</item>
         <item name="android:paddingStart">8dp</item>
         <item name="android:paddingEnd">48dp</item>
+    </style>
+
+    <!-- Barra de navegação inferior: ícone e texto do item selecionado em vermelho -->
+    <style name="Widget.WA.BottomNavigationView" parent="Widget.Material3.BottomNavigationView">
+        <item name="itemIconTint">@color/nav_item_cor</item>
+        <item name="itemTextColor">@color/nav_item_cor</item>
+        <item name="itemActiveIndicatorStyle">@style/Widget.WA.BottomNavigationView.ActiveIndicator</item>
+    </style>
+
+    <style name="Widget.WA.BottomNavigationView.ActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">@color/wa_vermelho_claro</item>
+    </style>
+
+    <!-- Mensagem de "nenhum resultado" das telas de consulta: texto maior, centralizado, com a ilustração das pranchetas em cima -->
+    <style name="Widget.WA.MensagemVazia" parent="">
+        <item name="android:gravity">center</item>
+        <item name="android:paddingHorizontal">32dp</item>
+        <item name="android:paddingVertical">24dp</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textColor">?android:attr/textColorSecondary</item>
+        <item name="android:drawableTop">@drawable/ilustracao_vazio</item>
+        <item name="android:drawablePadding">8dp</item>
     </style>
 </resources>

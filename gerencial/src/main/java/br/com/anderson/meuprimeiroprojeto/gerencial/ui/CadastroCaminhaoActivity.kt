@@ -14,16 +14,13 @@ import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.CadastroCaminha
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.CadastroCaminhaoUiState
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.CadastroCaminhaoViewModel
 
-/**
- * A tela de cadastro de caminhão (placa, marca, modelo e ano). Os caminhões cadastrados aparecem
- * depois na tela de atribuir viagem. Aberta pela aba Configurações.
- */
 class CadastroCaminhaoActivity : AppCompatActivity() {
 
     private val viewModel: CadastroCaminhaoViewModel by viewModels()
 
     // Componentes da tela, preenchidos no onCreate com findViewById.
     private lateinit var editPlaca: EditText
+    private lateinit var editNumero: EditText
     private lateinit var editMarca: EditText
     private lateinit var editModelo: EditText
     private lateinit var editAno: EditText
@@ -38,8 +35,10 @@ class CadastroCaminhaoActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_cadastro_caminhao)
+        configurarBarraPrimeiroNivel()
 
         editPlaca = findViewById(R.id.editPlaca)
+        editNumero = findViewById(R.id.editNumero)
         editMarca = findViewById(R.id.editMarca)
         editModelo = findViewById(R.id.editModelo)
         editAno = findViewById(R.id.editAno)
@@ -50,6 +49,7 @@ class CadastroCaminhaoActivity : AppCompatActivity() {
         botaoCriar.setOnClickListener {
             viewModel.criar(
                 editPlaca.text.toString(),
+                editNumero.text.toString(),
                 editMarca.text.toString(),
                 editModelo.text.toString(),
                 editAno.text.toString()
@@ -65,16 +65,18 @@ class CadastroCaminhaoActivity : AppCompatActivity() {
      * Toast e o fechamento da tela.
      */
     private fun exibirEstado(estado: CadastroCaminhaoUiState) {
-        progresso.visibility = if (estado.carregando) View.VISIBLE else View.GONE
-        botaoCriar.isEnabled = !estado.carregando
+        botaoCriar.exibirCarregando(estado.carregando, progresso)
 
         editPlaca.error = if (estado.erroCampoPlaca) getString(R.string.cadastro_caminhao_erro_placa) else null
+        editNumero.error = if (estado.erroCampoNumero) getString(R.string.cadastro_caminhao_erro_numero) else null
         editAno.error = if (estado.erroCampoAno) getString(R.string.cadastro_caminhao_erro_ano) else null
 
         val mensagemErro = when {
             estado.erroMarcaModelo -> getString(R.string.cadastro_caminhao_erro_marca_modelo)
             estado.erroGeral == CadastroCaminhaoErro.PLACA_DUPLICADA ->
                 getString(R.string.cadastro_caminhao_erro_placa_duplicada)
+            estado.erroGeral == CadastroCaminhaoErro.NUMERO_DUPLICADO ->
+                getString(R.string.cadastro_caminhao_erro_numero_duplicado)
             estado.erroGeral == CadastroCaminhaoErro.GENERICO -> getString(R.string.cadastro_caminhao_erro_generico)
             else -> null
         }

@@ -12,12 +12,15 @@
 
     <TextView
         android:id="@+id/textSemCaminhoes"
+        style="@style/Widget.WA.MensagemVazia"
+        android:drawableTop="@drawable/ilustracao_mapa_vazio"
+        android:drawablePadding="8dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="top|center_horizontal"
-        android:layout_margin="16dp"
-        android:background="#CCFFFFFF"
-        android:padding="12dp"
+        android:layout_gravity="center"
+        android:layout_margin="32dp"
+        android:background="@drawable/bg_aviso_mapa"
+        android:elevation="4dp"
         android:text="@string/mapa_nenhum_caminhao"
         android:visibility="gone" />
 

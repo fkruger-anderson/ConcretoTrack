@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ilustração do mapa sem caminhões em rota: caminhão parado na garagem, visto de frente. No estilo dos ícones preenchidos (Material Symbols), em dois tons de cinza. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="127dp"
+    android:height="140dp"
+    android:viewportWidth="679.7"
+    android:viewportHeight="751.7">
+    <group
+        android:translateX="-140.2"
+        android:translateY="-107.5">
+        <path
+            android:fillColor="#FFB9B9B9"
+            android:pathData="M160,840V380Q160,360 176,348L460,135Q480,120 500,135L784,348Q800,360 800,380V840Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M280,840V470Q280,450 300,450H660Q680,450 680,470V840Z" />
+        <path
+            android:fillColor="#FFB9B9B9"
+            android:pathData="M394,570H566A44,44 0 0,1 610,614V776A44,44 0 0,1 566,820H394A44,44 0 0,1 350,776V614A44,44 0 0,1 394,570Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M418,612H542A26,26 0 0,1 568,638V674A26,26 0 0,1 542,700H418A26,26 0 0,1 392,674V638A26,26 0 0,1 418,612Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M388,756A24,24 0 1,0 436,756A24,24 0 1,0 388,756Z" />
+        <path
+            android:fillColor="#FF959595"
+            android:pathData="M524,756A24,24 0 1,0 572,756A24,24 0 1,0 524,756Z" />
+    </group>
+</vector>

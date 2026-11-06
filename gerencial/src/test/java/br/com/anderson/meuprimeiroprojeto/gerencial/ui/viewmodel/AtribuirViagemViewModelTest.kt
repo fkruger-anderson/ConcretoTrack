@@ -24,7 +24,7 @@ class AtribuirViagemViewModelTest {
 
     private val viewModel = AtribuirViagemViewModel()
     private val motorista = MotoristaComId("uid-ana", MotoristaPerfil(nome = "Ana Souza"))
-    private val caminhao = Caminhao("ABC1D23", "Mercedes-Benz", "Atego 2426", 2020)
+    private val caminhao = Caminhao("ABC1D23", "12", "Mercedes-Benz", "Atego 2426", 2020)
 
     /** Quantidade vazia, zero, negativa ou que não é número é recusada, sem enviar nada. */
     @Test

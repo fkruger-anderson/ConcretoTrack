@@ -54,6 +54,7 @@ class AtribuirViagemActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_atribuir_viagem)
+        configurarBarraSegundoNivel()
 
         pedidoId = intent.getIntExtra(EXTRA_PEDIDO_ID, -1)
         if (pedidoId <= 0) {
@@ -97,15 +98,13 @@ class AtribuirViagemActivity : AppCompatActivity() {
         if (estado.semDadosParaAtribuir) {
             textSemDados.text = getString(R.string.atribuir_sem_dados)
             textSemDados.visibility = View.VISIBLE
-            botaoAtribuir.isEnabled = false
         } else {
             textSemDados.visibility = View.GONE
             spinnerMotorista.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, estado.motoristas)
             spinnerCaminhao.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, estado.caminhoes)
-            botaoAtribuir.isEnabled = !estado.enviando
         }
 
-        progresso.visibility = if (estado.enviando) View.VISIBLE else View.GONE
+        botaoAtribuir.exibirCarregando(estado.enviando, progresso, habilitado = !estado.semDadosParaAtribuir)
         editQuantidadeM3.error = if (estado.erroQuantidade) getString(R.string.atribuir_erro_m3) else null
 
         val mensagemErro = when (estado.erroAtribuir) {

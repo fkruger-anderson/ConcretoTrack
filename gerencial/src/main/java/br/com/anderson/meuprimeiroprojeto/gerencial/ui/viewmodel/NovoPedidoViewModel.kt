@@ -5,10 +5,20 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import br.com.anderson.meuprimeiroprojeto.gerencial.backend.CepRepositorio
+import br.com.anderson.meuprimeiroprojeto.gerencial.backend.EnderecoCep
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.PedidoRepositorio
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.DocumentoUtils
-import br.com.anderson.meuprimeiroprojeto.gerencial.dados.Uf
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import java.io.IOException
+
+enum class ErroCep {
+    NAO_ENCONTRADO,
+    FORA_DA_AREA,
+    SEM_CONEXAO
+}
 
 /**
  * O estado da tela de novo pedido ([NovoPedidoActivity][br.com.anderson.meuprimeiroprojeto.gerencial.ui.NovoPedidoActivity]).
@@ -21,7 +31,7 @@ data class NovoPedidoUiState(
     val carregando: Boolean = false,
     val erroDocumento: Boolean = false,
     val erroNome: Boolean = false,
-    /** Qualquer problema no endereço (CEP, rua, número, bairro, cidade ou UF). */
+    /** Qualquer problema no endereço (CEP, rua, número, bairro ou cidade). */
     val erroEndereco: Boolean = false,
     val erroQuantidade: Boolean = false,
     val erroDistanciaKm: Boolean = false,
@@ -29,7 +39,10 @@ data class NovoPedidoUiState(
     /** Os campos estavam certos, mas não deu para gravar (por exemplo, sem internet). */
     val erroSalvar: Boolean = false,
     /** Aviso de sucesso, levando o número que o pedido recebeu; tratado uma vez só. */
-    val sucesso: Evento<Int>? = null
+    val sucesso: Evento<Int>? = null,
+    val enderecoCep: Evento<EnderecoCep>? = null,
+    val erroCep: Evento<ErroCep>? = null,
+    val buscandoCep: Boolean = false
 )
 
 /**
@@ -43,10 +56,63 @@ class NovoPedidoViewModel : ViewModel() {
         private const val TAG = "NovoPedidoViewModel"
     }
 
+    private var ultimoCepBuscado: String? = null
+    private var buscaCep: Job? = null
+
     // `_estado` é a versão que o ViewModel pode mudar; `estado` é a versão só de leitura da tela.
     private val _estado = MutableLiveData(NovoPedidoUiState())
     /** O estado atual da tela; a tela é avisada toda vez que ele muda. */
     val estado: LiveData<NovoPedidoUiState> = _estado
+
+    fun buscarCep(cepDigitado: String, cidadesAtendidas: List<String>) {
+        val cep = DocumentoUtils.apenasDigitos(cepDigitado)
+        if (cep.length != 8) {
+            if (ultimoCepBuscado != null) {
+                buscaCep?.cancel()
+                buscaCep = null
+                ultimoCepBuscado = null
+                _estado.value = _estado.value?.copy(buscandoCep = false)
+            }
+            return
+        }
+        if (cep == ultimoCepBuscado) return
+        ultimoCepBuscado = cep
+        buscaCep?.cancel()
+        _estado.value = _estado.value?.copy(buscandoCep = true)
+
+        buscaCep = viewModelScope.launch {
+            try {
+                val endereco = CepRepositorio.buscar(cep)
+                if (endereco == null) {
+                    publicarErroCep(ErroCep.NAO_ENCONTRADO)
+                    return@launch
+                }
+                val cidade = cidadesAtendidas.firstOrNull { it.equals(endereco.localidade?.trim(), ignoreCase = true) }
+                if (cidade == null) {
+                    publicarErroCep(ErroCep.FORA_DA_AREA)
+                    return@launch
+                }
+                _estado.value = _estado.value?.copy(enderecoCep = Evento(endereco.copy(localidade = cidade)))
+            } catch (erro: CancellationException) {
+                throw erro
+            } catch (erro: IOException) {
+                publicarErroCep(ErroCep.SEM_CONEXAO)
+            } catch (erro: Exception) {
+                Log.w(TAG, "Falha ao buscar o CEP $cep", erro)
+                publicarErroCep(ErroCep.NAO_ENCONTRADO)
+            } finally {
+                if (coroutineContext[Job] === buscaCep) {
+                    buscaCep = null
+                    _estado.value = _estado.value?.copy(buscandoCep = false)
+                }
+            }
+        }
+    }
+
+    private fun publicarErroCep(erro: ErroCep) {
+        ultimoCepBuscado = null
+        _estado.value = _estado.value?.copy(erroCep = Evento(erro))
+    }
 
     /**
      * Confere os campos e, se todos estiverem certos, salva o pedido.
@@ -54,7 +120,7 @@ class NovoPedidoViewModel : ViewModel() {
      * O que é conferido:
      * - documento: precisa ser CPF ou CNPJ válido (dígitos verificadores certos);
      * - nome: não pode ser vazio;
-     * - endereço: CEP com 8 números, rua/número/bairro/cidade preenchidos e UF existente;
+     * - endereço: CEP com 8 números, rua/número/bairro/cidade preenchidos;
      * - quantidade e distância: números maiores que zero (a vírgula é trocada por ponto, porque o
      *   Kotlin só entende "2.5");
      * - data de entrega: precisa ter sido escolhida.
@@ -74,7 +140,6 @@ class NovoPedidoViewModel : ViewModel() {
         numero: String,
         bairro: String,
         cidade: String,
-        ufDigitada: String,
         quantidadeDigitada: String,
         distanciaDigitada: String,
         dataEntrega: Long?
@@ -85,9 +150,8 @@ class NovoPedidoViewModel : ViewModel() {
         val nomeInvalido = nome.isEmpty()
 
         val cep = DocumentoUtils.apenasDigitos(cepDigitado)
-        val uf = ufDigitada.trim().uppercase()
         val enderecoInvalido = cep.length != 8 || rua.isEmpty() || numero.isEmpty() ||
-            bairro.isEmpty() || cidade.isEmpty() || uf !in Uf.siglas
+            bairro.isEmpty() || cidade.isEmpty()
 
         val quantidadeM3 = quantidadeDigitada.trim().replace(',', '.').toDoubleOrNull()
         val quantidadeInvalida = quantidadeM3 == null || quantidadeM3 <= 0.0
@@ -132,7 +196,8 @@ class NovoPedidoViewModel : ViewModel() {
                     numero = numero,
                     bairro = bairro,
                     cidade = cidade,
-                    uf = uf,
+                    // UF chumbada porque a empresa atende somente Santa Catarina
+                    uf = "SC",
                     cep = cep,
                     quantidadeTotalM3 = requireNotNull(quantidadeM3),
                     dataEntrega = requireNotNull(dataEntrega),

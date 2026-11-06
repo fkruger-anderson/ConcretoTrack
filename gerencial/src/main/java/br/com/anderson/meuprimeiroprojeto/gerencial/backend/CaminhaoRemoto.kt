@@ -9,6 +9,7 @@ package br.com.anderson.meuprimeiroprojeto.gerencial.backend
  * Os valores padrão existem porque o Firestore precisa criar o objeto vazio antes de preencher.
  */
 data class CaminhaoRemoto(
+    val numero: String = "",
     /** Fabricante, por exemplo "Mercedes-Benz". */
     val marca: String = "",
     /** Modelo, por exemplo "Atego 2426". */

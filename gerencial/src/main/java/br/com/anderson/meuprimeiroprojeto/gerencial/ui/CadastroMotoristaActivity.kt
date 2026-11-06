@@ -41,6 +41,7 @@ class CadastroMotoristaActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_cadastro_motorista)
+        configurarBarraPrimeiroNivel()
 
         editNome = findViewById(R.id.editNome)
         editCpf = findViewById(R.id.editCpf)
@@ -68,8 +69,7 @@ class CadastroMotoristaActivity : AppCompatActivity() {
      * e, se deu certo, um Toast e o fechamento da tela.
      */
     private fun exibirEstado(estado: CadastroMotoristaUiState) {
-        progresso.visibility = if (estado.carregando) View.VISIBLE else View.GONE
-        botaoCriar.isEnabled = !estado.carregando
+        botaoCriar.exibirCarregando(estado.carregando, progresso)
 
         editNome.error = if (estado.erroCampoNome) getString(R.string.cadastro_motorista_erro_nome) else null
         editCpf.error = if (estado.erroCampoCpf) getString(R.string.cadastro_motorista_erro_cpf) else null

@@ -3,13 +3,13 @@
     <item
         android:id="@+id/nav_pedidos"
         android:title="@string/nav_pedidos"
-        android:icon="@android:drawable/ic_menu_agenda" />
+        android:icon="@drawable/ic_nav_pedidos" />
     <item
         android:id="@+id/nav_mapa"
         android:title="@string/nav_mapa"
-        android:icon="@android:drawable/ic_menu_mapmode" />
+        android:icon="@drawable/ic_nav_mapa" />
     <item
         android:id="@+id/nav_configuracoes"
         android:title="@string/nav_configuracoes"
-        android:icon="@android:drawable/ic_menu_preferences" />
+        android:icon="@drawable/ic_nav_configuracoes" />
 </menu>

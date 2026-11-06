@@ -6,23 +6,31 @@
     android:fitsSystemWindows="true"
     android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/textRoteiroVazio"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="24dp"
-        android:gravity="center"
-        android:text="@string/roteiro_vazio"
-        android:visibility="gone" />
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerViagensRoteiro"
+    <!-- Lista e mensagem de "nenhum resultado" no mesmo espaço: a mensagem fica no centro dele -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:clipToPadding="false"
-        android:padding="8dp"
-        android:visibility="gone" />
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerViagensRoteiro"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:padding="8dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/textRoteiroVazio"
+            style="@style/Widget.WA.MensagemVazia"
+            android:drawableTop="@drawable/ilustracao_roteiro_vazio"
+            android:drawablePadding="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="@string/roteiro_vazio"
+            android:visibility="gone" />
+    </FrameLayout>
 
     <TextView
         android:id="@+id/textAvisoPermissao"
@@ -34,13 +42,28 @@
         android:visibility="gone"
         tools:text="Permissão de localização negada; o rastreamento não pode iniciar" />
 
-    <Button
-        android:id="@+id/botaoIniciarRoteiro"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:text="@string/roteiro_botao_iniciar"
-        android:visibility="gone" />
+        android:layout_height="wrap_content">
+
+        <Button
+            android:id="@+id/botaoIniciarRoteiro"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:text="@string/roteiro_botao_iniciar"
+            android:visibility="gone" />
+
+        <ProgressBar
+            android:id="@+id/progressoIniciarRoteiro"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_gravity="center"
+            android:layout_margin="16dp"
+            android:elevation="10dp"
+            android:indeterminateTint="@color/white"
+            android:visibility="gone" />
+    </FrameLayout>
 
     <TextView
         android:id="@+id/textBateria"
@@ -73,12 +96,27 @@
 
     </FrameLayout>
 
-    <Button
-        android:id="@+id/botaoEncerrarRoteiro"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:text="@string/roteiro_botao_encerrar"
-        android:visibility="gone" />
+        android:layout_height="wrap_content">
+
+        <Button
+            android:id="@+id/botaoEncerrarRoteiro"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:text="@string/roteiro_botao_encerrar"
+            android:visibility="gone" />
+
+        <ProgressBar
+            android:id="@+id/progressoEncerrarRoteiro"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_gravity="center"
+            android:layout_margin="16dp"
+            android:elevation="10dp"
+            android:indeterminateTint="@color/white"
+            android:visibility="gone" />
+    </FrameLayout>
 
 </LinearLayout>

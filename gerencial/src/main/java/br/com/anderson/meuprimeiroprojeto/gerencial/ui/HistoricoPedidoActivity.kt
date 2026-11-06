@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView
 import br.com.anderson.meuprimeiroprojeto.gerencial.R
 import br.com.anderson.meuprimeiroprojeto.gerencial.backend.ViagemRemota
 import br.com.anderson.meuprimeiroprojeto.gerencial.dados.StatusPedido
+import br.com.anderson.meuprimeiroprojeto.gerencial.dados.identificacaoCaminhao
 import br.com.anderson.meuprimeiroprojeto.gerencial.formatarKm
 import br.com.anderson.meuprimeiroprojeto.gerencial.formatarM3
 import br.com.anderson.meuprimeiroprojeto.gerencial.ui.viewmodel.HistoricoPedidoUiState
@@ -73,6 +74,7 @@ class HistoricoPedidoActivity : AppCompatActivity() {
         textKmTotal = findViewById(R.id.textKmTotal)
         botaoDataEntrega = findViewById(R.id.botaoDataEntrega)
         botaoAtribuirViagem = findViewById(R.id.botaoAtribuirViagem)
+        configurarBarraPrimeiroNivel()
         textListaVazia = findViewById(R.id.textListaVazia)
         recyclerViagens = findViewById(R.id.recyclerViagens)
         recyclerViagens.layoutManager = LinearLayoutManager(this)
@@ -196,7 +198,10 @@ class HistoricoPedidoActivity : AppCompatActivity() {
 
         AlertDialog.Builder(this)
             .setTitle(R.string.cancelar_viagem_titulo)
-            .setMessage(getString(R.string.viagem_motorista_formato, viagem.motoristaNome, viagem.caminhaoPlaca))
+            .setMessage(getString(
+                R.string.viagem_motorista_formato, viagem.motoristaNome,
+                identificacaoCaminhao(viagem.caminhaoNumero, viagem.caminhaoPlaca)
+            ))
             .setView(editMotivo)
             .setPositiveButton(R.string.cancelar_viagem_confirmar) { _, _ ->
                 val motivo = editMotivo.text.toString().trim()

@@ -91,13 +91,7 @@ class LoginActivity : AppCompatActivity() {
      * e, se o login deu certo, abre a tela seguinte.
      */
     private fun exibirEstado(estado: LoginUiState) {
-        progresso.visibility = if (estado.carregando) View.VISIBLE else View.GONE
-        botaoEntrar.isEnabled = !estado.carregando
-        // Enquanto carrega, o texto do botão some e a rodinha aparece no lugar dele. O fundo
-        // continua vermelho mesmo desabilitado (backgroundTint fixo no layout).
-        botaoEntrar.text = if (estado.carregando) "" else getString(R.string.login_botao_entrar)
-        botaoEntrar.contentDescription =
-            if (estado.carregando) getString(R.string.login_entrando) else null
+        botaoEntrar.exibirCarregando(estado.carregando, progresso, descricaoCarregando = R.string.login_entrando)
 
         val mensagemErro = when (estado.erro) {
             LoginErro.CAMPOS_VAZIOS -> getString(R.string.login_erro_campos_vazios)

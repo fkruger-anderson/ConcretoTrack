@@ -45,14 +45,17 @@
 
     <string name="cadastro_caminhao_titulo">Novo caminhão</string>
     <string name="cadastro_caminhao_hint_placa">Placa</string>
+    <string name="cadastro_caminhao_hint_numero">Número</string>
     <string name="cadastro_caminhao_hint_marca">Marca</string>
     <string name="cadastro_caminhao_hint_modelo">Modelo</string>
     <string name="cadastro_caminhao_hint_ano">Ano</string>
     <string name="cadastro_caminhao_botao">Cadastrar caminhão</string>
     <string name="cadastro_caminhao_erro_placa">Placa inválida (ex.: ABC1D23 ou ABC1234)</string>
+    <string name="cadastro_caminhao_erro_numero">Informe o número do caminhão, só com dígitos (ex.: 04)</string>
     <string name="cadastro_caminhao_erro_marca_modelo">Preencha marca e modelo</string>
     <string name="cadastro_caminhao_erro_ano">Informe um ano válido</string>
     <string name="cadastro_caminhao_erro_placa_duplicada">Já existe um caminhão com essa placa</string>
+    <string name="cadastro_caminhao_erro_numero_duplicado">Já existe um caminhão com esse número</string>
     <string name="cadastro_caminhao_erro_generico">Não foi possível cadastrar. Verifique sua conexão e tente de novo</string>
     <string name="cadastro_caminhao_sucesso">Caminhão cadastrado</string>
 
@@ -71,7 +74,7 @@
     <string name="atribuir_erro_generico">Não foi possível atribuir a viagem. Tente de novo</string>
     <string name="atribuir_sucesso">Viagem atribuída</string>
     <string name="atribuir_sem_dados">Cadastre pelo menos um pedido com saldo, um motorista e um caminhão antes de atribuir uma viagem</string>
-    <string name="home_lista_vazia">Nenhum pedido cadastrado ainda</string>
+    <string name="home_lista_vazia">Nenhum pedido cadastrado</string>
     <string name="home_erro_carregar">Não foi possível carregar os pedidos. Verifique sua conexão</string>
     <string name="home_item_numero_formato">Pedido nº %1$d — %2$s</string>
     <string name="home_progresso_formato">%1$s de %2$s m³ alocados (restam %3$s)</string>
@@ -89,7 +92,10 @@
     <string name="novo_pedido_hint_numero">Número</string>
     <string name="novo_pedido_hint_bairro">Bairro</string>
     <string name="novo_pedido_hint_cidade">Cidade</string>
-    <string name="novo_pedido_hint_uf">UF</string>
+    <string name="novo_pedido_erro_cidade">Escolha uma cidade da lista</string>
+    <string name="novo_pedido_erro_cep_nao_encontrado">CEP não encontrado</string>
+    <string name="novo_pedido_erro_cep_fora_area">Este CEP é de uma cidade fora do Alto Vale do Itajaí</string>
+    <string name="novo_pedido_erro_cep_sem_conexao">Sem conexão para buscar o endereço pelo CEP</string>
     <string name="novo_pedido_hint_m3">Quantidade total (m³)</string>
     <string name="novo_pedido_hint_distancia_km">Distância da usina até o cliente (km, ida)</string>
     <string name="novo_pedido_hint_data_entrega">Data de entrega</string>
@@ -104,12 +110,12 @@
     <string name="novo_pedido_sucesso">Pedido nº %1$d cadastrado</string>
 
     <string name="mapa_titulo">Caminhões em tempo real</string>
-    <string name="mapa_nenhum_caminhao">Nenhum caminhão em rota agora</string>
+    <string name="mapa_nenhum_caminhao">Nenhum caminhão em rota</string>
 
     <string name="historico_item_numero_formato">Pedido nº %1$d — %2$s</string>
     <string name="historico_progresso_formato">%1$s de %2$s m³ alocados (restam %3$s)</string>
     <string name="historico_km_total_formato">%1$s km percorridos (todas as viagens)</string>
-    <string name="historico_lista_vazia">Nenhuma viagem para este pedido ainda</string>
+    <string name="historico_lista_vazia">Nenhuma viagem para este pedido</string>
     <string name="historico_erro_carregar">Não foi possível carregar o histórico. Verifique sua conexão</string>
     <string name="historico_erro_atualizar_data_entrega">Não foi possível atualizar a data de entrega. Verifique sua conexão</string>
     <string name="cancelar_viagem_titulo">Cancelar viagem</string>
@@ -120,13 +126,12 @@
     <string name="cancelar_viagem_erro_estado">Essa viagem não pode mais ser cancelada (já foi concluída ou cancelada)</string>
     <string name="cancelar_viagem_erro_generico">Não foi possível cancelar a viagem. Verifique sua conexão e tente de novo</string>
     <string name="cancelar_viagem_sucesso">Viagem cancelada</string>
-    <string name="viagem_motorista_formato">%1$s — placa %2$s</string>
-    <string name="viagem_detalhes_formato">%1$s m³ · início %2$s%3$s</string>
-    <string name="viagem_detalhes_atribuida_formato">%1$s m³ · atribuída em %2$s</string>
-    <string name="viagem_detalhes_cancelada_formato">%1$s m³ · motivo: %2$s</string>
+    <string name="viagem_motorista_formato">%1$s — caminhão %2$s</string>
+    <string name="viagem_m3_formato">%1$s m³</string>
+    <string name="viagem_periodo_formato">%1$s - %2$s</string>
+    <string name="viagem_motivo_formato">Motivo: %1$s</string>
     <string name="viagem_km_formato">%1$s km percorridos</string>
     <string name="viagem_botao_cancelar">Cancelar viagem</string>
-    <string name="viagem_fim_formato"> · fim %1$s</string>
     <string name="viagem_status_atribuida">Atribuída (motorista ainda não iniciou)</string>
     <string name="viagem_status_em_rota">Em rota</string>
     <string name="viagem_status_concluida">Concluída</string>
@@ -134,7 +139,7 @@
 
     <string name="rota_marcador_inicio">Início</string>
     <string name="rota_marcador_fim">Fim</string>
-    <string name="rota_sem_pontos">Nenhum ponto de GPS registrado neste roteiro</string>
+    <string name="rota_sem_pontos">Nenhum ponto de GPS registrado no roteiro</string>
 
     <string name="detalhes_roteiro_titulo">Detalhes do roteiro</string>
     <string name="detalhes_roteiro_motorista_formato">Motorista: %1$s</string>
@@ -147,7 +152,7 @@
     <string name="detalhes_roteiro_item_rateio_formato">%1$s%% do roteiro · %2$s km atribuídos</string>
     <string name="detalhes_roteiro_item_sem_km">Aguardando o roteiro ser encerrado</string>
 
-    <string name="mapa_marcador_formato">%1$s — placa %2$s</string>
+    <string name="mapa_marcador_formato">%1$s — caminhão %2$s</string>
 
     <string name="nav_pedidos">Pedidos</string>
     <string name="nav_mapa">Mapa</string>
@@ -160,4 +165,38 @@
     <string name="cadastro_gerente_hint_senha">Senha (mínimo 6 caracteres)</string>
     <string name="cadastro_gerente_botao">Cadastrar gerente</string>
     <string name="cadastro_gerente_sucesso">Gerente cadastrado</string>
+    <!-- Cidades atendidas: os 28 municípios do Alto Vale do Itajaí (SC) -->
+    <string-array name="cidades_alto_vale">
+        <item>Agrolândia</item>
+        <item>Agronômica</item>
+        <item>Atalanta</item>
+        <item>Aurora</item>
+        <item>Braço do Trombudo</item>
+        <item>Chapadão do Lageado</item>
+        <item>Dona Emma</item>
+        <item>Ibirama</item>
+        <item>Imbuia</item>
+        <item>Ituporanga</item>
+        <item>José Boiteux</item>
+        <item>Laurentino</item>
+        <item>Lontras</item>
+        <item>Mirim Doce</item>
+        <item>Petrolândia</item>
+        <item>Pouso Redondo</item>
+        <item>Presidente Getúlio</item>
+        <item>Presidente Nereu</item>
+        <item>Rio do Campo</item>
+        <item>Rio do Oeste</item>
+        <item>Rio do Sul</item>
+        <item>Salete</item>
+        <item>Santa Terezinha</item>
+        <item>Taió</item>
+        <item>Trombudo Central</item>
+        <item>Vidal Ramos</item>
+        <item>Vitor Meireles</item>
+        <item>Witmarsum</item>
+    </string-array>
+    <string name="carregando">Carregando</string>
+    <string name="voltar">Voltar</string>
+    <string name="fechar">Fechar</string>
 </resources>
